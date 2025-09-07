@@ -174,6 +174,10 @@ Optional parameters:
 - `min_seq_id`: float = 0.0,
 - `c`: float = 0.0,
 - `max_seqs`: int = 300,
+- `translate`: bool = False,
+- `translation_table`: int = 1,
+- `translation_mode`: int = 0,
+- `search_type`: int = 0,
 
 - Note: if `tmp_dir` is None, tmp folder would be created in the parent dir of `alignment_file`
 Output of `easy_search` is an `EasySearchParser` object.

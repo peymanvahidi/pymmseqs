@@ -19,6 +19,10 @@ def easy_search(
     min_seq_id: float = 0.0,
     c: float = 0.0,
     max_seqs: int = 300,
+    translate: bool = False,
+    translation_table: int = 1,
+    translation_mode: int = 0,
+    search_type: int = 0,
     format_output: str = "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits",
 
 ) -> EasySearchParser:
@@ -65,6 +69,63 @@ def easy_search(
         - 300 (default)
         - Higher values increase sensitivity but may slow down the search
     
+    `translate` : bool, optional
+        Translate nucleotide input to amino acids before searching
+        - False (default)
+        - Set to True when queries are nucleotides and targets are proteins
+
+    `translation_table` : int, optional
+        Specifies the genetic code table to use 
+            - 1: Canonical (default)
+            - 2: Vert Mitochondrial
+            - 3: Yeast Mitochondrial
+            - 4: Mold Mitochondrial
+            - 5: Invert Mitochondrial
+            - 6: Ciliate
+            - 9: Flatworm Mitochondrial
+            - 10: Euplotid
+            - 11: Prokaryote
+            - 12: Alt Yeast
+            - 13: Ascidian Mitochondrial
+            - 14: Alt Flatworm Mitochondrial
+            - 15: Blepharisma
+            - 16: Chlorophycean Mitochondrial
+            - 21: Trematode Mitochondrial
+            - 22: Scenedesmus Mitochondrial
+            - 23: Thraustochytrium Mitochondrial
+            - 24: Pterobranchia Mitochondrial
+            - 25: Gracilibacteria
+            - 26: Pachysolen
+            - 27: Karyorelict
+            - 28: Condylostoma
+            - 29: Mesodinium
+            - 30: Pertrich
+            - 31: Blastocrithidia
+    
+    `translation_mode` : int, optional
+        How to translate nucleotide queries when `translate` is True
+        - 0: ORFs (default)
+        - 1: full reading frames
+
+    `search_type` : int, optional
+        Controls search mode
+        - 0: auto-detect (default)
+        - 1: amino acid vs amino acid
+        - 2: translated nucleotide vs amino acid
+        - 3: nucleotide vs nucleotide
+        - 4: translated nucleotide alignment
+    
+    `format_output` : str, optional
+        Comma-separated list of output columns to include in results.  
+        Available columns:  
+        - query, target, evalue, gapopen, pident, fident, nident, qstart, qend, qlen  
+        - tstart, tend, tlen, alnlen, raw, bits, cigar, qseq, tseq, qheader, theader, qaln, taln  
+        - qframe, tframe, mismatch, qcov, tcov, qset, qsetid, tset, tsetid, taxid, taxname, taxlineage  
+        - qorfstart, qorfend, torfstart, torfend, ppos  
+
+        - Default: "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits"
+
+    
     Returns
     -------
     EasySearchParser object
@@ -87,6 +148,10 @@ def easy_search(
         c=c,
         max_seqs=max_seqs,
         format_mode=4,
+        translate=translate,
+        translation_table=translation_table,
+        translation_mode=translation_mode,
+        search_type=search_type,
         format_output=format_output
     )
 
