@@ -2,16 +2,16 @@
 
 import pandas as pd
 import csv
-from typing import Generator
+from typing import Generator, Union
 import numpy as np
 
-from ..config import EasySearchConfig
+from ..config import EasySearchConfig, ConvertAlisConfig
 
 class EasySearchParser:
     """
     A class for parsing the output of the EasySearchConfig.
     """
-    def __init__(self, config: EasySearchConfig):
+    def __init__(self, config: Union[EasySearchConfig, ConvertAlisConfig]):
         if not config.format_mode == 4:
             raise ValueError(f"Using EasySearchParser with format_mode={config.format_mode} is not supported. Please use format_mode=4.")
         
