@@ -189,3 +189,54 @@ Methods:
 - `to_path()`: Get the paths to the search output files.
 
 [See an example](../examples/commands_module/easy_search_ex.py)
+
+---
+
+## [fast_easy_search](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/fast_easy_search.py)
+Run an easy-style search optimized for single or few queries by preloading the target index into memory.
+
+```python
+from pymmseqs.commands import fast_easy_search
+
+search_result = fast_easy_search(
+  query_fasta="query.fasta",
+  target_fasta="target.fasta",
+  alignment_file="output/search_results.m8"
+)
+```
+
+Optional parameters:
+- `tmp_dir`: Path = None,
+- `s`: float = 5.7,
+- `e`: float = 0.001,
+- `min_seq_id`: float = 0.0,
+- `c`: float = 0.0,
+- `max_seqs`: int = 300,
+- `translate`: bool = False,
+- `translation_table`: int = 1,
+- `translation_mode`: int = 0,
+- `search_type`: int = 0,
+- `format_output`: str = "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits"
+
+- Note: if `tmp_dir` is None, a `tmp` folder is created next to `alignment_file`.
+
+What it does under the hood (workflow):
+- Create query DB using `mmseqs createdb`.
+- Create target DB using `mmseqs createdb`.
+- Index the target DB using `mmseqs createindex`.
+- Preload the target index into memory using `mmseqs touchdb`.
+- Search using `mmseqs search` with `db_load_mode=2` (mmap).
+- Convert results to a readable TSV with headers using `mmseqs convertalis` (format_mode=4).
+
+How this differs from `easy_search`:
+- `easy_search` is a single MMseqs2 command that builds what it needs and runs the search, usually loading the index from disk for each run.
+- `fast_easy_search` explicitly adds a `touchdb` step to keep the target index in memory and forces mmap loading (`db_load_mode=2`) during `search`.
+- This typically speeds up single or few-query workflows when the index fits into RAM; for very large query sets, copying into RAM might be less beneficial.
+
+Output of `fast_easy_search` is an `EasySearchParser` object.
+
+Methods:
+- `to_list()`: Returns a list of search results with their query, target, and alignment information.
+- `to_pandas()`: Converts search results into a pandas DataFrame for easy manipulation.
+- `to_gen()`: Generator that yields search results one at a time for efficient processing of large files.
+- `to_path()`: Get the path to the alignment file.
