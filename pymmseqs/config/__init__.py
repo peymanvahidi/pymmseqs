@@ -11,6 +11,7 @@ from .easy_cluster_config import EasyClusterConfig
 from .easy_linclust_config import EasyLinClustConfig
 from .convertalis_config import ConvertAlisConfig
 from .createindex_config import CreateIndexConfig
+from .touchdb_config import TouchDBConfig
 
 __all__ = [
     'BaseConfig',
@@ -24,4 +25,5 @@ __all__ = [
     'EasyLinClustConfig',
     'ConvertAlisConfig',
     'CreateIndexConfig',
+    'TouchDBConfig',
 ]

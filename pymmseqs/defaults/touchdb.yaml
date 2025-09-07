@@ -1,0 +1,12 @@
+# mmseqs/defaults/touchdb.yaml
+
+sequence_db:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "The input sequence database (prefix) to touch into memory"
+  twin: False
+  should_exist: True
+
+
