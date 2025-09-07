@@ -298,8 +298,6 @@ class BaseConfig(ABC):
                 
                 if output_path:
                     f.write(f"Output path: {output_path}\n")
-            
-            print(f"✓ Detailed execution log has been saved")
         
         # Handle success or failure 
         if success:

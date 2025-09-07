@@ -12,7 +12,7 @@ def run_mmseqs_command(args, capture_output=True):
     binary = get_mmseqs_binary()
     cmd = [binary] + args
 
-    print("\n" + "\033[34m" + "-"*20 + "\033[0m" + " Running a mmseqs2 command " + "\033[34m" + "-"*20 + "\033[0m")
+    print("\n" + " Running pymmseqs command... ")
 
     result = subprocess.run(cmd, capture_output=capture_output, text=True)
     
