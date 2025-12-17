@@ -57,7 +57,7 @@ tax_db_mode:
 threads:
   required: False
   type: int
-  default: 14
+  default: 'all'
   choices: null
   description: "Number of CPU-cores used (all by default)"
   twin: False

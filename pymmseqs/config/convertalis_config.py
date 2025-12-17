@@ -39,7 +39,7 @@ class ConvertAlisConfig(BaseConfig):
         # Common parameters
         sub_mat: str = "aa:blosum62.out,nucl:nucleotide.out",
         db_load_mode: int = 0,
-        threads: int = 14,
+        threads: Union[str, int] = 'all',
         compressed: bool = False,
         v: int = 3,
 
