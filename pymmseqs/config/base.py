@@ -165,6 +165,11 @@ class BaseConfig(ABC):
         """
         for param_name, param_info in self._defaults.items():
             value = getattr(self, param_name)
+
+            if param_name == 'threads':
+                if value == 'all':
+                    value = int(os.cpu_count())
+                    setattr(self, param_name, value)
             
             # Skip optional parameters with default values
             if not param_info['required'] and value == param_info['default']:
