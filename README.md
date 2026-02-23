@@ -5,10 +5,10 @@
     </h1>
 
 
-![GitHub Actions](https://img.shields.io/github/actions/workflow/status/heispv/pymmseqs/pypi-publish.yaml?style=plastic&logo=github-actions&label=CI)
-[![License](https://img.shields.io/github/license/heispv/pymmseqs?style=plastic&color=orange&logo=github&label=License)](./LICENSE)
+![GitHub Actions](https://img.shields.io/github/actions/workflow/status/peymanvahidi/pymmseqs/pypi-publish.yaml?style=plastic&logo=github-actions&label=CI)
+[![License](https://img.shields.io/github/license/peymanvahidi/pymmseqs?style=plastic&color=orange&logo=github&label=License)](./LICENSE)
 [![PyPI Version](https://img.shields.io/pypi/v/pymmseqs?style=plastic&color=4b8bbe&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/pymmseqs/)
-[![Docker](https://img.shields.io/badge/Docker-GHCR-0db7ed?style=plastic&logo=docker&label=Docker)](https://github.com/heispv/pymmseqs/pkgs/container/pymmseqs)
+[![Docker](https://img.shields.io/badge/Docker-GHCR-0db7ed?style=plastic&logo=docker&label=Docker)](https://github.com/peymanvahidi/pymmseqs/pkgs/container/pymmseqs)
 
 PyMMseqs is a powerful Python wrapper for [MMseqs2](https://github.com/soedinglab/MMseqs2). It seamlessly integrates MMseqs2’s advanced functionality into your Python workflows, allowing you to effortlessly execute MMseqs2 commands and parse their outputs into convenient Python objects for further analysis. Whether you're clustering sequences, searching databases, or analyzing large-scale biological data, PyMMseqs simplifies the process while maintaining the performance and flexibility of MMseqs2.
 
