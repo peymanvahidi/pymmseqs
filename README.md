@@ -5,7 +5,7 @@
     </h1>
 
 
-![GitHub Actions](https://img.shields.io/github/actions/workflow/status/peymanvahidi/pymmseqs/pypi-publish.yaml?style=plastic&logo=github-actions&label=CI)
+![GitHub Actions](https://img.shields.io/github/actions/workflow/status/peymanvahidi/pymmseqs/release.yaml?style=plastic&logo=github-actions&label=CI)
 [![License](https://img.shields.io/github/license/peymanvahidi/pymmseqs?style=plastic&color=orange&logo=github&label=License)](./LICENSE)
 [![PyPI Version](https://img.shields.io/pypi/v/pymmseqs?style=plastic&color=4b8bbe&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/pymmseqs/)
 [![Docker](https://img.shields.io/badge/Docker-GHCR-0db7ed?style=plastic&logo=docker&label=Docker)](https://github.com/peymanvahidi/pymmseqs/pkgs/container/pymmseqs)
