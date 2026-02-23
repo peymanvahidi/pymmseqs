@@ -87,7 +87,7 @@ class CreateTaxDBConfig(BaseConfig):
         self._path_params = [param for param, info in DEFAULTS.items() if info['type'] == 'path']
         self._caller_dir = get_caller_dir()
 
-    def validate(self) -> None:
+    def _validate(self) -> None:
         self._check_required_files()
         self._validate_choices()
 
@@ -107,7 +107,7 @@ class CreateTaxDBConfig(BaseConfig):
     def run(self) -> None:
         self._resolve_all_path(self._caller_dir)
 
-        self.validate()
+        self._validate()
         
         args = self._get_command_args("createtaxdb")
         mmseqs_output = run_mmseqs_command(args)
