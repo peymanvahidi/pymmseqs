@@ -60,7 +60,7 @@ class CreateIndexConfig(BaseConfig):
         # Common parameters
         max_seq_len: int = 65535,
         v: int = 3,
-        threads: int = 14,
+        threads: Union[str, int] = 'all',
         compressed: bool = False,
         remove_tmp_files: bool = False,
 

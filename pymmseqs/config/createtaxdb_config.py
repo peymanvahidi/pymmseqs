@@ -69,7 +69,7 @@ class CreateTaxDBConfig(BaseConfig):
         tax_mapping_file: Union[str, Path] = "",
         tax_mapping_mode: int = 0,
         tax_db_mode: int = 1,
-        threads: int = 14,
+        threads: Union[str, int] = 'all',
         v: int = 3
     ):
         super().__init__()

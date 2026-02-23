@@ -82,7 +82,7 @@ class EasyLinClustConfig(BaseConfig):
         id_offset: int = 0,
 
         # Common parameters
-        threads: int = 14,
+        threads: Union[str, int] = 'all',
         compressed: bool = False,
         v: int = 3,
         sub_mat: str = "aa:blosum62.out,nucl:nucleotide.out",
