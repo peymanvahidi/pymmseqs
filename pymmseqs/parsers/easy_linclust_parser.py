@@ -315,5 +315,5 @@ class EasyLinClustParser:
         return [
             f"{self.cluster_prefix}_all_seqs.fasta",
             f"{self.cluster_prefix}_cluster.tsv",
-            f"{self.cluster_prefix}_rep_seqs.fasta",
+            f"{self.cluster_prefix}_rep_seq.fasta",
         ]

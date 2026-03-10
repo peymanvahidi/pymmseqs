@@ -1,17 +1,19 @@
 # pymmseqs/commands/__init__.py
 
 from .createdb import createdb
-from .search import search
-from .easy_search import easy_search
-from .easy_cluster import easy_cluster
 from .createindex import createindex
+from .easy_cluster import easy_cluster
+from .easy_linclust import easy_linclust
+from .easy_search import easy_search
 from .fast_easy_search import fast_easy_search
+from .search import search
 
 __all__ = [
     "createdb",
     "search",
     "easy_search",
     "easy_cluster",
+    "easy_linclust",
     "createindex",
-    "fast_easy_search"
+    "fast_easy_search",
 ]

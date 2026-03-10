@@ -1,23 +1,20 @@
 from pathlib import Path
-from typing import Union, List
+from typing import List, Union
 
 from pymmseqs.config.base import BaseConfig
 from pymmseqs.defaults import loader
-from pymmseqs.utils import (
-    get_caller_dir,
-    run_mmseqs_command
-)
+from pymmseqs.utils import get_caller_dir, run_mmseqs_command
 
 DEFAULTS = loader.load("easy_linclust")
+
 
 class EasyLinClustConfig(BaseConfig):
     def __init__(
         self,
         # Required parameters
-        fasta_files: Union[str, Path],
+        fasta_files: Union[str, Path, List[Union[str, Path]]],
         cluster_prefix: Union[str, Path],
         tmp_dir: Union[str, Path],
-
         # Prefilter parameters
         comp_bias_corr: bool = True,
         comp_bias_corr_scale: float = 1.0,
@@ -31,7 +28,6 @@ class EasyLinClustConfig(BaseConfig):
         mask_n_repeat: int = 0,
         k: int = 0,
         split_memory_limit: str = "0",
-
         # Alignment parameters
         a: bool = False,
         alignment_mode: int = 0,
@@ -54,12 +50,10 @@ class EasyLinClustConfig(BaseConfig):
         gap_open: str = "aa:11,nucl:5",
         gap_extend: str = "aa:1,nucl:2",
         zdrop: int = 40,
-        
         # Clustering parameters
         cluster_mode: int = 0,
         max_iterations: int = 1000,
         similarity_type: int = 2,
-
         # K-mer matcher parameters
         weights: str = "",
         cluster_weight_threshold: float = 0.9,
@@ -69,20 +63,17 @@ class EasyLinClustConfig(BaseConfig):
         hash_shift: int = 67,
         include_only_extendable: bool = False,
         ignore_multi_kmer: bool = False,
-
         # Profile parameters
         pca: float = 0.0,
         pcb: float = 0.0,
-
         # Misc parameters
         rescore_mode: int = 0,
         dbtype: int = 0,
         shuffle: bool = True,
         createdb_mode: int = 1,
         id_offset: int = 0,
-
         # Common parameters
-        threads: Union[str, int] = 'all',
+        threads: Union[str, int] = "all",
         compressed: bool = False,
         v: int = 3,
         sub_mat: str = "aa:blosum62.out,nucl:nucleotide.out",
@@ -91,8 +82,6 @@ class EasyLinClustConfig(BaseConfig):
         remove_tmp_files: bool = True,
         force_reuse: bool = False,
         mpi_runner: str = "",
-
-
         # Expert parameters
         filter_hits: bool = False,
         sort_results: int = 0,
@@ -133,7 +122,7 @@ class EasyLinClustConfig(BaseConfig):
             - "aa:21,nucl:5" (default)
                 - aa:21: 20 amino acids + X for unknown residues
                 - nucl:5: 4 nucleotides + N for unknown bases
-        
+
         `spaced_kmer_mode` : int, optional
             Spaced k-mer mode
             - 0: consecutive
@@ -159,7 +148,7 @@ class EasyLinClustConfig(BaseConfig):
             Mask lowercase letters in k-mer search.
             - True
             - False (default)
-        
+
         `mask_n_repeat` : int, optional
             Repeat letters that occure > threshold in a row
             - 0 (default)
@@ -188,7 +177,7 @@ class EasyLinClustConfig(BaseConfig):
             - 3: + seq.id
             - 4: only ungapped alignment
             - 5: score only (output) cluster format
-        
+
         `alignment_output_mode` : int, optional
             Alignment output mode
             - 0: automatic (default)
@@ -197,7 +186,7 @@ class EasyLinClustConfig(BaseConfig):
             - 3: also seq.id
             - 4: only ungapped alignment
             - 5: score only (output) cluster format
-        
+
         `wrapped_scoring` : bool, optional
             Enable wrapped diagonal scoring for nucleotide sequences by doubling the query sequence
             - True
@@ -289,7 +278,7 @@ class EasyLinClustConfig(BaseConfig):
             Maximum score drop allowed before truncating the alignment (nucleotide alignments only)
             - 40 (default)
                 - Terminates alignments early in low-quality regions to improve computational efficiency
-        
+
         Clustering Parameters
         ----------------------
         `cluster_mode` : int, optional
@@ -369,8 +358,8 @@ class EasyLinClustConfig(BaseConfig):
             - 2: local alignment
             - 3: global alignment
             - 4: longest alignment fulfilling window quality criterion
-        
-        `dbtype` : int, optional  
+
+        `dbtype` : int, optional
             Database type
             - 0: Auto-detect (default)
             - 1: Amino acid
@@ -381,11 +370,11 @@ class EasyLinClustConfig(BaseConfig):
             - True (default)
             - False
 
-        `createdb_mode` : int, optional  
+        `createdb_mode` : int, optional
             Database creation mode
             - 0: Copy data
             - 1: Soft link data and write a new index (only works with single-line FASTA/Q files) (default)
-        
+
         `id_offset` : int, optional
             Numeric IDs in index file are offset by this value
             - 0 (default)
@@ -395,7 +384,7 @@ class EasyLinClustConfig(BaseConfig):
         `threads` : int, optional
             CPU threads
             - 14 (default)
-        
+
         `compressed` : bool, optional
             Compress output
             - True
@@ -436,7 +425,7 @@ class EasyLinClustConfig(BaseConfig):
             Reuse tmp filse in tmp/latest folder ignoring parameters and version changes
             - True
             - False (default)
-        
+
         `mpi_runner` : str, optional
             Use MPI on compute cluster with this MPI command (e.g., "mpirun -np 42")
             - "" (default)
@@ -451,8 +440,8 @@ class EasyLinClustConfig(BaseConfig):
         `sort_results` : int, optional
             Result sorting method
             - 0: No sorting (default)
-            - 1: E-value (Alignment) or sequence ID (Hamming) 
-        
+            - 1: E-value (Alignment) or sequence ID (Hamming)
+
         `write_lookup` : bool, optional
             Create a `.lookup` file mapping internal IDs to FASTA IDs
             - True (default)
@@ -469,9 +458,11 @@ class EasyLinClustConfig(BaseConfig):
         >>> config.run()
         """
         super().__init__()
-        
+
         # Initialize required parameters
-        self.fasta_files = fasta_files if isinstance(fasta_files, list) else [fasta_files]
+        self.fasta_files = (
+            fasta_files if isinstance(fasta_files, list) else [fasta_files]
+        )
         self.cluster_prefix = Path(cluster_prefix)
         self.tmp_dir = Path(tmp_dir)
 
@@ -555,7 +546,9 @@ class EasyLinClustConfig(BaseConfig):
         self.write_lookup = write_lookup
 
         self._defaults = DEFAULTS
-        self._path_params = [param for param, info in DEFAULTS.items() if info['type'] == 'path']
+        self._path_params = [
+            param for param, info in DEFAULTS.items() if info["type"] == "path"
+        ]
         self._caller_dir = get_caller_dir()
 
     def _validate(self) -> None:
@@ -593,7 +586,6 @@ class EasyLinClustConfig(BaseConfig):
             raise ValueError("threads must be >= 0")
         if not (0 <= self.max_seq_len):
             raise ValueError("max_seq_len must be >= 0")
-        
 
     def run(self) -> None:
         self._resolve_all_path(self._caller_dir)
@@ -606,5 +598,5 @@ class EasyLinClustConfig(BaseConfig):
         self._handle_command_output(
             mmseqs_output=mmseqs_output,
             output_identifier="Easy Linclust",
-            output_path=str(self.cluster_prefix)
+            output_path=str(self.cluster_prefix),
         )
