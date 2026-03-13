@@ -27,7 +27,7 @@ pyyaml = "^6.0.1"
 numpy = ">=1.22.4"
 pandas = "^2.2.2"
 ipython = "^8.22.1"
-scikit-learn = ">=1.8.0"
+scikit-learn = ">=1.5.0"
 
 [tool.poetry.urls]
 "Homepage" = "https://github.com/heispv/pymmseqs"
