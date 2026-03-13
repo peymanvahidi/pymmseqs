@@ -1,23 +1,23 @@
-# pymmseqs/parsers/easy_cluster_parser.py
+# pymmseqs/parsers/easy_linclust_parser.py
 
-from ..config import EasyClusterConfig
+from ..config import EasyLinClustConfig
 from .base_cluster_parser import BaseClusterParser
 
-class EasyClusterParser(BaseClusterParser):
+class EasyLinClustParser(BaseClusterParser):
     """
-    A class for parsing the output of the EasyClusterConfig.
+    A class for parsing the output of the EasyLinClustConfig.
     """
     def __init__(
         self,
-        config: EasyClusterConfig,
+        config: EasyLinClustConfig,
         seq_id_separator: str = "|",
         seq_id_index: int = 1
     ):
         """
         Parameters
         ----------
-        config: EasyClusterConfig
-            The configuration object for the EasyCluster command.
+        config: EasyLinClustConfig
+            The configuration object for the EasyLinClust command.
         seq_id_separator: str, optional
             The separator used in the FASTA headers to separate the sequence ID from other information.
             Default is "|".
