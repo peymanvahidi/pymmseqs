@@ -1,4 +1,4 @@
-# build.py
+# build_hook.py
 import os
 import subprocess
 

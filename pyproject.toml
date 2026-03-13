@@ -19,7 +19,7 @@ include = [
     "pymmseqs/defaults/*.yaml",
     "scripts/*"
 ]
-build = "build.py"
+build = "build_hook.py"
 
 [tool.poetry.dependencies]
 python = ">=3.10"
