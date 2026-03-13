@@ -35,4 +35,4 @@ scikit-learn = ">=1.5.0"
 "Bug Tracker" = "https://github.com/heispv/pymmseqs/issues"
 
 [tool.cibuildwheel]
-skip = "cp27-* pp27-* pp3*-* *-manylinux_i686 *-musllinux_i686"
+skip = "*-manylinux_i686 *-musllinux_i686"

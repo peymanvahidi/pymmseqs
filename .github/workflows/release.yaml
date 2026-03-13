@@ -86,8 +86,9 @@ jobs:
         uses: pypa/cibuildwheel@v3.4.0
         env:
           CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=10.12"
+          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=11.0"
           CIBW_BEFORE_BUILD: bash {project}/scripts/download_mmseqs.sh {project}/pymmseqs/bin
+          CIBW_BUILD_VERBOSITY: "1"
 
       - name: Upload wheels artifact
         uses: actions/upload-artifact@v4
