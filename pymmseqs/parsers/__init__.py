@@ -5,6 +5,8 @@ from .createindex_parser import CreateIndexParser
 from .easy_cluster_parser import EasyClusterParser
 from .easy_linclust_parser import EasyLinClustParser
 from .easy_search_parser import EasySearchParser
+from .easy_taxonomy_parser import EasyTaxonomyParser
+from .generic_parser import GenericParser
 from .search_parser import SearchParser
 
 __all__ = [
@@ -12,6 +14,8 @@ __all__ = [
     "EasyLinClustParser",
     "CreateDBParser",
     "EasySearchParser",
+    "EasyTaxonomyParser",
+    "GenericParser",
     "SearchParser",
     "CreateIndexParser",
 ]

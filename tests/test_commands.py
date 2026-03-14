@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 
-from pymmseqs.config import CreateDBConfig, EasyLinClustConfig
+from pymmseqs.config import CreateDBConfig, EasyLinClustConfig, EasyTaxonomyConfig
 from pymmseqs.parsers.base_cluster_parser import BaseClusterParser
 
 
@@ -217,6 +217,164 @@ class TestBaseClusterParser(unittest.TestCase):
             rep_seq_path.endswith("_rep_seq.fasta"),
             f"Expected _rep_seq.fasta, got {rep_seq_path}"
         )
+
+
+class TestEasyTaxonomy(unittest.TestCase):
+    """Test easy_taxonomy CLI argument generation."""
+
+    def test_easy_taxonomy_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = EasyTaxonomyConfig(
+            fasta_file="/tmp/test_query.fasta",
+            target_db="/tmp/test_targetDB",
+            tax_reports="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+            # Non-default params to verify they appear
+            lca_mode=4,
+            s=7.5,
+            e=0.01,
+        )
+
+        # Skip file existence checks for this test
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("easy_taxonomy")
+
+        # Verify command name (underscores -> hyphens)
+        self.assertEqual(args[0], "easy-taxonomy")
+
+        # Verify required positional args in order
+        self.assertEqual(args[1], "/tmp/test_query.fasta")
+        self.assertEqual(args[2], "/tmp/test_targetDB")
+        self.assertEqual(args[3], "/tmp/test_result")
+        self.assertEqual(args[4], "/tmp/test_tmp")
+
+        # Verify non-default lca_mode appears
+        self.assertIn("--lca-mode", args)
+        idx = args.index("--lca-mode")
+        self.assertEqual(args[idx + 1], "4")
+
+        # Verify non-default sensitivity appears
+        self.assertIn("-s", args)
+        idx = args.index("-s")
+        self.assertEqual(args[idx + 1], "7.5")
+
+        # Verify non-default e-value appears
+        self.assertIn("-e", args)
+        idx = args.index("-e")
+        self.assertEqual(args[idx + 1], "0.01")
+
+        # Verify default params are NOT in args
+        self.assertNotIn("--report-mode", args)
+        self.assertNotIn("--vote-mode", args)
+        self.assertNotIn("--min-seq-id", args)
+
+    def test_easy_taxonomy_variadic_fasta(self):
+        """Verify multiple FASTA files are handled correctly."""
+        config = EasyTaxonomyConfig(
+            fasta_file=["/tmp/file1.fasta", "/tmp/file2.fasta"],
+            target_db="/tmp/test_targetDB",
+            tax_reports="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+        )
+
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("easy_taxonomy")
+
+        self.assertEqual(args[0], "easy-taxonomy")
+        self.assertEqual(args[1], "/tmp/file1.fasta")
+        self.assertEqual(args[2], "/tmp/file2.fasta")
+        self.assertEqual(args[3], "/tmp/test_targetDB")
+        self.assertEqual(args[4], "/tmp/test_result")
+        self.assertEqual(args[5], "/tmp/test_tmp")
+
+
+class TestEasyTaxonomyParser(unittest.TestCase):
+    """Test EasyTaxonomyParser methods."""
+
+    def test_parser_import(self):
+        """Verify parser can be imported."""
+        from pymmseqs.parsers.easy_taxonomy_parser import EasyTaxonomyParser
+        self.assertTrue(EasyTaxonomyParser is not None)
+
+    def test_parser_has_all_methods(self):
+        """Verify parser class has all expected methods."""
+        from pymmseqs.parsers.easy_taxonomy_parser import EasyTaxonomyParser
+        expected_methods = [
+            'to_pandas', 'to_list', 'to_gen', 'to_path',
+            'to_json', 'to_csv',
+            'report', 'lca_assignments', 'top_hits',
+            'summary', 'composition', 'diversity',
+            'rank_summary', 'unclassified_report', 'filter_by_taxon',
+            'plot_composition', 'plot_rank_resolution',
+            'plot_composition_pie', 'plot_classified_vs_unclassified',
+            'plot_diversity_comparison',
+        ]
+        for method in expected_methods:
+            self.assertTrue(
+                hasattr(EasyTaxonomyParser, method),
+                f"Missing method: {method}"
+            )
+
+    def test_parser_init_extracts_config_attrs(self):
+        """Verify parser extracts correct attributes from config."""
+        from pymmseqs.parsers.easy_taxonomy_parser import EasyTaxonomyParser
+
+        config = EasyTaxonomyConfig(
+            fasta_file="/tmp/test.fasta",
+            target_db="/tmp/test_targetDB",
+            tax_reports="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+            lca_ranks="superkingdom,phylum",
+            tax_lineage=1,
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyTaxonomyParser(config)
+        self.assertEqual(parser._prefix, "/tmp/test_result")
+        self.assertEqual(parser._lca_ranks, "superkingdom,phylum")
+        self.assertEqual(parser._tax_lineage, 1)
+
+    def test_to_path_returns_all_outputs(self):
+        """Verify to_path returns dict with all 4 output files."""
+        from pymmseqs.parsers.easy_taxonomy_parser import EasyTaxonomyParser
+
+        config = EasyTaxonomyConfig(
+            fasta_file="/tmp/test.fasta",
+            target_db="/tmp/test_targetDB",
+            tax_reports="/tmp/result",
+            tmp_dir="/tmp/test_tmp",
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyTaxonomyParser(config)
+        paths = parser.to_path()
+
+        self.assertIsInstance(paths, dict)
+        self.assertIn('lca', paths)
+        self.assertIn('report', paths)
+        self.assertIn('tophit_aln', paths)
+        self.assertIn('tophit_report', paths)
+        self.assertEqual(paths['lca'], '/tmp/result_lca.tsv')
+        self.assertEqual(paths['report'], '/tmp/result_report')
+
+    def test_rank_constants(self):
+        """Verify rank order and aliases are consistent."""
+        from pymmseqs.parsers.easy_taxonomy_parser import (
+            RANK_ORDER, RANK_ALIASES
+        )
+        # Core ranks must be in RANK_ORDER
+        for rank in ['phylum', 'class', 'order', 'family', 'genus', 'species']:
+            self.assertIn(rank, RANK_ORDER)
+        # Aliases must map to ranks in RANK_ORDER
+        for alias, canonical in RANK_ALIASES.items():
+            self.assertTrue(
+                alias in RANK_ORDER or canonical in RANK_ORDER,
+                f"Alias {alias}->{canonical} not in RANK_ORDER"
+            )
 
 
 if __name__ == "__main__":
