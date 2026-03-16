@@ -715,7 +715,7 @@ translation_table:
   required: False
   type: int
   default: 1
-  choices: [1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+  choices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
   description: "Select genetic code for translation: 1) CANONICAL, 2) VERT_MITOCHONDRIAL, etc."
   twin: False
   should_exist: False

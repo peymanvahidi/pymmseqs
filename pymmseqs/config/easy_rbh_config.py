@@ -873,8 +873,16 @@ class EasyRbhConfig(BaseConfig):
             raise ValueError("qsc must be between -50.0 and 100.0")
         if not (0.0 <= self.cov <= 1.0):
             raise ValueError("cov must be between 0.0 and 1.0")
+        if not (0 <= self.max_rejected):
+            raise ValueError("max_rejected must be >= 0")
+        if not (0 <= self.max_accept):
+            raise ValueError("max_accept must be >= 0")
         if not (0 <= self.min_length <= self.max_length):
             raise ValueError("min_length must be >= 0 and <= max_length")
+        if not (0 <= self.max_gaps):
+            raise ValueError("max_gaps must be >= 0")
+        if not (0 <= self.num_iterations):
+            raise ValueError("num_iterations must be >= 0")
 
     def run(self) -> None:
         self._resolve_all_path(self._caller_dir)

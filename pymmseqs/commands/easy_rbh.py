@@ -1,7 +1,7 @@
 # pymmseqs/commands/easy_rbh.py
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from ..config import EasyRbhConfig
 from ..parsers import GenericParser
@@ -9,7 +9,7 @@ from ..utils import tmp_dir_handler
 
 
 def easy_rbh(
-    query_fasta: Union[str, Path],
+    query_fasta: Union[str, Path, List[Union[str, Path]]],
     target_fasta_or_db: Union[str, Path],
     alignment_file: Union[str, Path],
 
