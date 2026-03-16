@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 
-from pymmseqs.config import CreateDBConfig, EasyLinClustConfig, EasyTaxonomyConfig
+from pymmseqs.config import CreateDBConfig, EasyLinClustConfig, EasyRbhConfig, EasyTaxonomyConfig
 from pymmseqs.parsers.base_cluster_parser import BaseClusterParser
 
 
@@ -217,6 +217,75 @@ class TestBaseClusterParser(unittest.TestCase):
             rep_seq_path.endswith("_rep_seq.fasta"),
             f"Expected _rep_seq.fasta, got {rep_seq_path}"
         )
+
+
+class TestEasyRbh(unittest.TestCase):
+    """Test easy_rbh CLI argument generation."""
+
+    def test_easy_rbh_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+            # Non-default params to verify they appear
+            s=7.5,
+            e=0.01,
+            realign=True,
+        )
+
+        # Skip file existence checks for this test
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("easy_rbh")
+
+        # Verify command name (underscores -> hyphens)
+        self.assertEqual(args[0], "easy-rbh")
+
+        # Verify required positional args in order
+        self.assertEqual(args[1], "/tmp/test_query.fasta")
+        self.assertEqual(args[2], "/tmp/test_target.fasta")
+        self.assertEqual(args[3], "/tmp/test_result")
+        self.assertEqual(args[4], "/tmp/test_tmp")
+
+        # Verify non-default sensitivity appears
+        self.assertIn("-s", args)
+        idx = args.index("-s")
+        self.assertEqual(args[idx + 1], "7.5")
+
+        # Verify non-default e-value appears
+        self.assertIn("-e", args)
+        idx = args.index("-e")
+        self.assertEqual(args[idx + 1], "0.01")
+
+        # Verify non-default bool (realign) appears
+        self.assertIn("--realign", args)
+        idx = args.index("--realign")
+        self.assertEqual(args[idx + 1], "1")
+
+        # Verify default params are NOT in args
+        self.assertNotIn("--min-seq-id", args)
+        self.assertNotIn("--alignment-mode", args)
+        self.assertNotIn("--cov-mode", args)
+
+    def test_easy_rbh_default_createdb_mode(self):
+        """Verify createdb_mode default is 1 (different from easy_search's 0)."""
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+        )
+
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("easy_rbh")
+
+        # createdb_mode=1 is the default for easy_rbh, so it should NOT appear
+        self.assertNotIn("--createdb-mode", args)
 
 
 class TestEasyTaxonomy(unittest.TestCase):

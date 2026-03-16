@@ -9,6 +9,7 @@ from .easy_search_config import EasySearchConfig
 from .easy_linsearch_config import EasyLinSearchConfig
 from .easy_cluster_config import EasyClusterConfig
 from .easy_linclust_config import EasyLinClustConfig
+from .easy_rbh_config import EasyRbhConfig
 from .easy_taxonomy_config import EasyTaxonomyConfig
 from .convertalis_config import ConvertAlisConfig
 from .createindex_config import CreateIndexConfig
@@ -24,6 +25,7 @@ __all__ = [
     'EasyLinSearchConfig',
     'EasyClusterConfig',
     'EasyLinClustConfig',
+    'EasyRbhConfig',
     'EasyTaxonomyConfig',
     'ConvertAlisConfig',
     'CreateIndexConfig',
