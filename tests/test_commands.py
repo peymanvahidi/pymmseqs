@@ -446,5 +446,256 @@ class TestEasyTaxonomyParser(unittest.TestCase):
             )
 
 
+class TestEasyRbhParser(unittest.TestCase):
+    """Test EasyRbhParser methods."""
+
+    def test_parser_import(self):
+        """Verify parser can be imported."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+        self.assertTrue(EasyRbhParser is not None)
+
+    def test_parser_has_all_methods(self):
+        """Verify parser class has all expected methods."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+        expected_methods = [
+            'to_pandas', 'to_list', 'to_gen', 'to_path',
+            'to_json', 'to_csv', 'summary',
+            'plot_identity_distribution', 'plot_evalue_distribution',
+            'plot_alignment_length', 'plot_score_distribution',
+        ]
+        for method in expected_methods:
+            self.assertTrue(
+                hasattr(EasyRbhParser, method),
+                f"Missing method: {method}"
+            )
+
+    def test_parser_init_extracts_config_attrs(self):
+        """Verify parser extracts correct attributes from config."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_rbh_result.tsv",
+            tmp_dir="/tmp/test_tmp",
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyRbhParser(config)
+        self.assertEqual(str(parser._alignment_file), "/tmp/test_rbh_result.tsv")
+        self.assertEqual(parser._format_mode, 0)
+        self.assertEqual(
+            parser._format_output,
+            "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits"
+        )
+
+    def test_to_path_returns_string(self):
+        """Verify to_path returns alignment file path as string."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_rbh_result.tsv",
+            tmp_dir="/tmp/test_tmp",
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyRbhParser(config)
+        path = parser.to_path()
+        self.assertIsInstance(path, str)
+        self.assertEqual(path, "/tmp/test_rbh_result.tsv")
+
+    def test_get_columns_parses_format_output(self):
+        """Verify _get_columns correctly parses format_output string."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_rbh_result.tsv",
+            tmp_dir="/tmp/test_tmp",
+            format_output="query,target,fident,evalue",
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyRbhParser(config)
+        columns = parser._get_columns()
+        self.assertEqual(columns, ["query", "target", "fident", "evalue"])
+
+    def test_parser_format_mode_4(self):
+        """Verify parser stores format_mode=4 from config."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        config = EasyRbhConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_rbh_result.tsv",
+            tmp_dir="/tmp/test_tmp",
+            format_mode=4,
+        )
+        config._check_required_files = lambda: None
+
+        parser = EasyRbhParser(config)
+        self.assertEqual(parser._format_mode, 4)
+
+    def test_to_pandas_format_mode_0(self):
+        """Verify to_pandas uses format_output columns for format_mode=0."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("q1\tt1\t0.95\t100\t5\t0\t1\t100\t1\t100\t1e-50\t200\n")
+            f.write("q2\tt2\t0.80\t80\t16\t0\t1\t80\t1\t80\t1e-30\t150\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            df = parser.to_pandas()
+            self.assertEqual(len(df), 2)
+            self.assertIn("query", df.columns)
+            self.assertIn("fident", df.columns)
+            self.assertIn("evalue", df.columns)
+        finally:
+            os.unlink(tmp_file)
+
+    def test_to_pandas_format_mode_4(self):
+        """Verify to_pandas reads headers from file for format_mode=4."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("query\ttarget\tfident\tevalue\n")
+            f.write("q1\tt1\t0.95\t1e-50\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+                format_mode=4,
+                format_output="query,target,fident,evalue",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            df = parser.to_pandas()
+            self.assertEqual(len(df), 1)
+            self.assertEqual(list(df.columns), ["query", "target", "fident", "evalue"])
+        finally:
+            os.unlink(tmp_file)
+
+    def test_summary_with_default_columns(self):
+        """Verify summary returns expected keys with default format_output."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("q1\tt1\t0.95\t100\t5\t0\t1\t100\t1\t100\t1e-50\t200\n")
+            f.write("q2\tt2\t0.80\t80\t16\t0\t1\t80\t1\t80\t1e-30\t150\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            stats = parser.summary()
+            self.assertEqual(stats["total_pairs"], 2)
+            self.assertIn("mean_identity", stats)
+            self.assertIn("median_evalue", stats)
+            self.assertIn("mean_alignment_length", stats)
+            self.assertIn("median_bit_score", stats)
+        finally:
+            os.unlink(tmp_file)
+
+    def test_summary_with_minimal_columns(self):
+        """Verify summary gracefully handles missing columns."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("q1\tt1\n")
+            f.write("q2\tt2\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+                format_output="query,target",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            stats = parser.summary()
+            self.assertEqual(stats["total_pairs"], 2)
+            self.assertNotIn("mean_identity", stats)
+            self.assertNotIn("median_evalue", stats)
+        finally:
+            os.unlink(tmp_file)
+
+    def test_to_list_returns_dicts(self):
+        """Verify to_list returns list of dicts with correct keys."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("q1\tt1\t0.95\t100\t5\t0\t1\t100\t1\t100\t1e-50\t200\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            result = parser.to_list()
+            self.assertIsInstance(result, list)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["query"], "q1")
+            self.assertEqual(result[0]["target"], "t1")
+        finally:
+            os.unlink(tmp_file)
+
+    def test_to_gen_yields_typed_values(self):
+        """Verify to_gen yields dicts with correct types."""
+        from pymmseqs.parsers.easy_rbh_parser import EasyRbhParser
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
+            f.write("q1\tt1\t0.95\t100\t5\t0\t1\t100\t1\t100\t1E-50\t200\n")
+            tmp_file = f.name
+
+        try:
+            config = EasyRbhConfig(
+                query_fasta="/tmp/test_query.fasta",
+                target_fasta_or_db="/tmp/test_target.fasta",
+                alignment_file=tmp_file,
+                tmp_dir="/tmp/test_tmp",
+            )
+            config._check_required_files = lambda: None
+            parser = EasyRbhParser(config)
+            rows = list(parser.to_gen())
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertIsInstance(row["fident"], float)
+            self.assertIsInstance(row["alnlen"], int)
+            self.assertIsInstance(row["evalue"], float)
+            self.assertIsInstance(row["bits"], int)
+        finally:
+            os.unlink(tmp_file)
+
+
 if __name__ == "__main__":
     unittest.main()
