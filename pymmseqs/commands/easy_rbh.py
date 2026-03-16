@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from ..config import EasyRbhConfig
-from ..parsers import GenericParser
+from ..parsers import EasyRbhParser
 from ..utils import tmp_dir_handler
 
 
@@ -141,7 +141,7 @@ def easy_rbh(
     db_output: bool = False,
     write_lookup: bool = False,
 
-) -> GenericParser:
+) -> EasyRbhParser:
     """Assign reciprocal best hits between query and target sequences.
 
     Parameters
@@ -191,8 +191,9 @@ def easy_rbh(
 
     Returns
     -------
-    GenericParser
-        Parser providing access to command output path.
+    EasyRbhParser
+        Parser providing access to reciprocal best hit results as DataFrames,
+        lists, generators, summary statistics, and visualizations.
     """
     tmp_dir = tmp_dir_handler(
         tmp_dir=tmp_dir,
@@ -321,4 +322,4 @@ def easy_rbh(
 
     config.run()
 
-    return GenericParser(config)
+    return EasyRbhParser(config)
