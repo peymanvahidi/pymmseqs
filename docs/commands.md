@@ -192,6 +192,91 @@ Methods:
 
 ---
 
+## [easy_taxonomy](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/easy_taxonomy.py)
+Wrapper around the `mmseqs easy-taxonomy` command. Assigns taxonomic labels to query sequences using LCA (Lowest Common Ancestor) against a taxonomy-enabled database.
+
+```python
+from pymmseqs.commands import easy_taxonomy
+
+tax_result = easy_taxonomy(
+    fasta_file="data/query.fasta",
+    target_db="swissprotDB",
+    tax_reports="output/tax_result",
+)
+```
+
+Optional parameters:
+- `tmp_dir`: Path = None,
+- `s`: float = 4.0,
+- `e`: float = 0.001,
+- `lca_mode`: int = 3 (1: single search LCA, 2/3: approximate 2bLCA, 4: top hit),
+- `orf_filter`: int = 0 (set 0 for short reads),
+- `report_mode`: int = 0 (0: Kraken, 1: Krona),
+- `search_type`: int = 0,
+- `min_seq_id`: float = 0.0,
+- `max_seqs`: int = 300
+
+- Note: if `tmp_dir` is None, tmp folder would be created in the parent dir of `tax_reports`
+
+Output of `easy_taxonomy` is an `EasyTaxonomyParser` object.
+
+Methods:
+
+**Data Access:**
+- `to_pandas(output='lca')`: Parse any output file as DataFrame ('lca', 'report', 'tophit_aln', 'tophit_report').
+- `to_list()`: Returns LCA assignments as a list of dictionaries.
+- `to_gen()`: Generator that yields LCA assignments one at a time.
+- `to_path()`: Returns a dict of all output file paths.
+- `to_json(path=None)`: Export LCA results as JSON string or to file.
+- `to_csv(path)`: Export results as CSV file.
+- `len(tax_result)`: Number of query sequences.
+- `print(tax_result)`: Pretty summary with classification stats.
+
+**Analysis:**
+- `summary()`: Overall stats — total queries, classified count/%, top phyla.
+- `report()`: Parse the Kraken-style taxonomic report as DataFrame.
+- `lca_assignments()`: Per-query LCA assignments as DataFrame.
+- `top_hits()`: Top-hit alignment data as DataFrame.
+- `composition(rank='phylum')`: Taxonomic composition at any rank (taxon, count, proportion).
+- `diversity(rank='phylum')`: Alpha diversity metrics — Shannon entropy, Simpson index, richness, evenness.
+- `rank_summary()`: Classification counts at each taxonomic level.
+- `unclassified_report()`: Classified vs unclassified statistics.
+- `filter_by_taxon(name, rank='phylum')`: Filter LCA assignments to a specific lineage.
+
+**Visualization (matplotlib):**
+- `plot_composition(rank, top_n)`: Horizontal bar chart of top taxa.
+- `plot_composition_pie(rank, top_n)`: Pie chart with "Other" slice.
+- `plot_classified_vs_unclassified()`: Pie chart of classification rate.
+- `plot_rank_resolution()`: Bar chart showing reads assigned per rank.
+- `plot_diversity_comparison(ranks)`: Grouped bar chart of Shannon/Simpson across ranks.
+
+All plot methods accept optional `ax` parameter for subplot composition and return `(fig, ax)` tuples.
+
+```python
+# Quick overview
+print(tax_result.summary())
+
+# Taxonomic breakdown
+comp = tax_result.composition('phylum')
+print(comp)
+
+# Diversity analysis
+div = tax_result.diversity('genus')
+print(f"Shannon: {div['shannon_entropy']}, Richness: {div['richness']}")
+
+# Filter to a specific lineage
+chordata = tax_result.filter_by_taxon('Chordata', 'phylum')
+
+# Generate plots
+fig, ax = tax_result.plot_composition('phylum', top_n=10)
+fig.savefig('phylum_composition.png')
+
+fig, ax = tax_result.plot_diversity_comparison()
+fig.savefig('diversity.png')
+```
+
+---
+
 ## [fast_easy_search](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/fast_easy_search.py)
 Run an easy-style search optimized for single or few queries by preloading the target index into memory.
 

@@ -77,6 +77,8 @@ parser.to_gen()
 
 ### EasyLinSearchConfig
 
+### EasyTaxonomyConfig
+
 ### ConvertalisConfig
 
 ### AlignConfig

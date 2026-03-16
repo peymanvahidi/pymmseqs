@@ -277,6 +277,191 @@ train_file, val_file, test_file = easy_cluster_parser.split_rep_as_fasta(
 
 ---
 
+# [EasyTaxonomyParser](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/parsers/easy_taxonomy_parser.py)
+The `EasyTaxonomyParser` provides methods for accessing taxonomy classification results as Python objects, computing taxonomic composition and diversity metrics, and generating visualizations.
+
+## Methods:
+
+### `to_pandas(output='lca')`
+- Returns a pandas DataFrame for any of the four output files.
+- **Parameters:**
+    - `output` (str): Which file to parse — `'lca'`, `'report'`, `'tophit_aln'`, or `'tophit_report'`.
+
+### `to_list(output='lca')`
+- Returns a list of dictionaries from the specified output file.
+
+### `to_gen()`
+- Returns a generator that yields LCA assignments one row at a time with automatic type conversion.
+
+### `to_path()`
+- Returns a dict mapping output names to file paths:
+    - `'lca'`: LCA assignments TSV
+    - `'report'`: Kraken-style taxonomic report
+    - `'tophit_aln'`: Top-hit alignment file
+    - `'tophit_report'`: Top-hit coverage report
+
+### `to_json(path=None)`
+- Exports LCA results as JSON. Returns a string if `path` is None, otherwise writes to file.
+
+### `to_csv(path, output='lca')`
+- Exports the specified output as a CSV file.
+
+### `summary()`
+- Returns a dict with overall classification statistics:
+    - `total_queries`, `classified`, `unclassified`, `classified_pct`, `num_taxa`, `top_phyla`
+
+### `report()`
+- Parses the Kraken-style taxonomic report as a DataFrame with columns: `percentage`, `num_reads_clade`, `num_reads_direct`, `rank_code`, `taxid`, `name`, `depth`.
+
+### `lca_assignments()`
+- Returns per-query LCA assignments as a DataFrame with columns: `query`, `taxid`, `rank`, `taxon_name`.
+
+### `top_hits()`
+- Returns the top-hit alignment data as a DataFrame. Column format depends on the `format_output` config setting.
+
+### `composition(rank='phylum')`
+- Returns taxonomic composition at a given rank as a DataFrame with columns: `taxon`, `count`, `proportion`.
+- Supports all standard ranks: `domain`, `kingdom`, `phylum`, `class`, `order`, `family`, `genus`, `species`, etc.
+
+**Example:**
+```python
+comp = tax_result.composition('phylum')
+# Returns:
+#             taxon  count  proportion
+# 0  Pseudomonadota    151    0.310062
+# 1        Chordata     70    0.143737
+# 2       Bacillota     58    0.119097
+```
+
+### `diversity(rank='phylum')`
+- Computes alpha diversity metrics at a given rank.
+- Returns a dict with: `richness`, `shannon_entropy`, `simpson_index`, `evenness`.
+
+**Example:**
+```python
+div = tax_result.diversity('genus')
+# Returns: {'richness': 202, 'shannon_entropy': 4.924, 'simpson_index': 0.989, 'evenness': 0.928}
+```
+
+### `rank_summary()`
+- Returns a DataFrame showing the number of taxa and reads at each taxonomic rank, sorted by canonical rank order.
+
+### `unclassified_report()`
+- Returns a dict with classified vs unclassified statistics: `total_queries`, `classified`, `unclassified`, `classified_pct`, `unclassified_pct`.
+
+### `filter_by_taxon(name, rank='phylum')`
+- Filters LCA assignments to queries classified at or below the specified taxon.
+- Uses the report hierarchy to identify all descendant taxids.
+
+**Example:**
+```python
+chordata_queries = tax_result.filter_by_taxon('Chordata', 'phylum')
+# Returns DataFrame with only queries classified within Chordata
+```
+
+### `plot_composition(rank='phylum', top_n=10)`
+- Horizontal bar chart of the top taxa at a given rank.
+
+### `plot_composition_pie(rank='phylum', top_n=8)`
+- Pie chart with an "Other" slice for remaining taxa.
+
+### `plot_classified_vs_unclassified()`
+- Pie chart showing classified vs unclassified query proportions.
+
+### `plot_rank_resolution()`
+- Bar chart showing how many reads were assigned at each taxonomic rank.
+
+### `plot_diversity_comparison(ranks=None)`
+- Grouped bar chart comparing Shannon entropy and Simpson's index across multiple ranks.
+
+**Visualization notes:** All plot methods accept an optional `ax` parameter for subplot composition, import matplotlib lazily, and return `(fig, ax)` tuples for further customization.
+
+## For Basic Users
+When using the `pymmseqs.commands.easy_taxonomy` command, you receive an `EasyTaxonomyParser` object.
+
+Example:
+```python
+from pymmseqs.commands import easy_taxonomy
+
+tax_result = easy_taxonomy(
+    fasta_file="query.fasta",
+    target_db="swissprotDB",
+    tax_reports="output/tax_result",
+)
+
+# Quick overview
+print(tax_result)
+# EasyTaxonomyParser:
+#   total_queries: 500
+#   classified: 497
+#   classified_pct: 99.4
+#   num_taxa: 1356
+#   top_phyla: Pseudomonadota, Chordata, Bacillota, Ascomycota, Streptophyta
+
+# Taxonomic composition at any rank
+comp = tax_result.composition('class')
+print(comp.head(5))
+
+# Diversity metrics
+for rank in ['phylum', 'class', 'order', 'family', 'genus', 'species']:
+    d = tax_result.diversity(rank)
+    print(f"{rank}: Shannon={d['shannon_entropy']:.2f}, richness={d['richness']}")
+
+# Filter to a lineage
+mammals = tax_result.filter_by_taxon('Mammalia', 'class')
+print(f"Mammalian queries: {len(mammals)}")
+
+# Export
+tax_result.to_csv('results.csv')
+
+# Visualize
+fig, ax = tax_result.plot_composition('phylum', top_n=12)
+fig.savefig('phylum_composition.png', dpi=150)
+
+fig, ax = tax_result.plot_diversity_comparison()
+fig.savefig('diversity.png', dpi=150)
+```
+
+## For Advanced Users
+Advanced users can utilize the `pymmseqs.config.EasyTaxonomyConfig` object for full control over all 80+ parameters.
+
+Example:
+```python
+from pymmseqs.config import EasyTaxonomyConfig
+from pymmseqs.parsers import EasyTaxonomyParser
+
+config = EasyTaxonomyConfig(
+    fasta_file="query.fasta",
+    target_db="swissprotDB",
+    tax_reports="output/tax_result",
+    tmp_dir="output/tmp",
+    lca_mode=4,           # top-hit mode
+    s=7.5,                # high sensitivity
+    e=1e-5,               # strict e-value
+    tax_lineage=1,        # include full lineage in LCA output
+    report_mode=0,        # Kraken-style report
+)
+
+config.run()
+
+parser = EasyTaxonomyParser(config)
+
+# Access different output files
+lca_df = parser.to_pandas('lca')
+report_df = parser.to_pandas('report')
+tophit_df = parser.to_pandas('tophit_aln')
+
+# Create a multi-panel figure
+import matplotlib.pyplot as plt
+fig, axes = plt.subplots(1, 3, figsize=(24, 7))
+parser.plot_composition('phylum', top_n=10, ax=axes[0])
+parser.plot_classified_vs_unclassified(ax=axes[1])
+parser.plot_diversity_comparison(ax=axes[2])
+fig.savefig('taxonomy_overview.png', dpi=150, bbox_inches='tight')
+```
+
+---
+
 # [SearchParser](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/parsers/search_parser.py)
 The `SearchParser` processes the output of the MMseqs2 `search` command, which performs sequence similarity searches between a query database and a target database.
 
