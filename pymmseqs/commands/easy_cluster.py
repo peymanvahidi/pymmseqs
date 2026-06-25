@@ -20,6 +20,7 @@ def easy_cluster(
     cov_mode: int = 0,
     e: float = 0.001,
     cluster_mode: int = 0,
+    gpu: int = 0,
 
 ) -> EasyClusterParser:
     """
@@ -71,7 +72,12 @@ def easy_cluster(
         - 0: Set-Cover (greedy) (default)
         - 1: Connected component (BLASTclust)
         - 2: Greedy by sequence length (CDHIT)
-    
+
+    `gpu` : int, optional
+        Use GPU (CUDA) if possible
+        - 0: off (default)
+        - 1: on
+
     Returns
     -------
     EasyClusterParser object
@@ -93,7 +99,8 @@ def easy_cluster(
         c=c,
         cov_mode=cov_mode,
         e=e,
-        cluster_mode=cluster_mode
+        cluster_mode=cluster_mode,
+        gpu=gpu
     )
 
     config.run()

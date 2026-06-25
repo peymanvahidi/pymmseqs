@@ -50,15 +50,39 @@ class CreateDBConfig(BaseConfig):
         Database creation mode
         - 0: Copy data (default)
         - 1: Soft-link data and write a new index (only works with single-line FASTA/Q)
+        - 2: GPU compatible db
 
     `id_offset` : int, optional
         Numeric ID offset in the index file
+        - 0 (default)
+
+    `mask` : int, optional
+        Mask sequences in prefilter stage with tantan
+        - 0: without low complexity masking
+        - 1: with low complexity masking (default)
+
+    `mask_prob` : float, optional
+        Mask sequences if probability is above threshold
+        - 0.9 (default)
+
+    `mask_lower_case` : int, optional
+        Whether lowercase letters are excluded from k-mer search
+        - 0: include region (default)
+        - 1: exclude region
+
+    `mask_n_repeat` : int, optional
+        Repeat letters that occur more than this threshold in a row
         - 0 (default)
 
     `compressed` : bool, optional
         Compress the output files
         - True
         - False (default)
+
+    `gpu` : int, optional
+        Use GPU (CUDA) if possible to build a GPU-compatible database
+        - 0: off (default)
+        - 1: on
 
     `v` : int, optional
         Verbosity level of the output
@@ -71,6 +95,10 @@ class CreateDBConfig(BaseConfig):
         Create a `.lookup` file mapping internal IDs to FASTA IDs
         - True (default)
         - False
+
+    `threads` : Union[str, int], optional
+        Number of CPU cores to use
+        - 'all' (default), converted to all available cores
     """
 
     def __init__(
@@ -81,12 +109,18 @@ class CreateDBConfig(BaseConfig):
         shuffle: bool = True,
         createdb_mode: int = 0,
         id_offset: int = 0,
+        mask: int = 1,
+        mask_prob: float = 0.9,
+        mask_lower_case: int = 0,
+        mask_n_repeat: int = 0,
         compressed: bool = False,
+        gpu: int = 0,
         v: int = 3,
-        write_lookup: bool = True
+        write_lookup: bool = True,
+        threads: Union[str, int] = 'all'
     ):
         super().__init__()
-        
+
         self.fasta_file = fasta_file if isinstance(fasta_file, list) else [fasta_file]
         self.fasta_file = [Path(f) for f in self.fasta_file]
         self.sequence_db = Path(sequence_db)
@@ -94,9 +128,15 @@ class CreateDBConfig(BaseConfig):
         self.shuffle = shuffle
         self.createdb_mode = createdb_mode
         self.id_offset = id_offset
+        self.mask = mask
+        self.mask_prob = mask_prob
+        self.mask_lower_case = mask_lower_case
+        self.mask_n_repeat = mask_n_repeat
         self.compressed = compressed
+        self.gpu = gpu
         self.v = v
         self.write_lookup = write_lookup
+        self.threads = threads
 
         self._defaults = DEFAULTS
         self._path_params = [param for param, info in DEFAULTS.items() if info['type'] == 'path']

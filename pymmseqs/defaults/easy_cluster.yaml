@@ -607,8 +607,8 @@ createdb_mode:
   required: False
   type: int
   default: 1
-  choices: [0, 1]
-  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q)"
+  choices: [0, 1, 2]
+  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q) 2: GPU compatible db"
   twin: False
   should_exist: False
 
@@ -645,6 +645,15 @@ db_load_mode:
   default: 0
   choices: [0, 1, 2, 3]
   description: "Database preload mode 0: auto, 1: fread, 2: mmap, 3: mmap+touch"
+  twin: False
+  should_exist: False
+
+gpu:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Use GPU (CUDA) if possible"
   twin: False
   should_exist: False
 

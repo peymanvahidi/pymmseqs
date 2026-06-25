@@ -21,6 +21,7 @@ def easy_linclust(
     cluster_mode: int = 0,
     kmer_per_seq: int = 21,
     kmer_per_seq_scale: str = "aa:0.000,nucl:0.200",
+    gpu: int = 0,
 ) -> EasyLinClustParser:
     """
     Perform fast linear-time sequence clustering using MMseqs2.
@@ -78,6 +79,11 @@ def easy_linclust(
         Scale k-mer per sequence based on sequence length as kmer-per-seq val + scale x seqlen.
         - "aa:0.000,nucl:0.200" (default)
 
+    `gpu` : int, optional
+        Use GPU (CUDA) if possible
+        - 0: off (default)
+        - 1: on
+
     Returns
     -------
     EasyLinClustParser object
@@ -107,6 +113,7 @@ def easy_linclust(
         cluster_mode=cluster_mode,
         kmer_per_seq=kmer_per_seq,
         kmer_per_seq_scale=kmer_per_seq_scale,
+        gpu=gpu,
     )
 
     config.run()

@@ -15,6 +15,8 @@ def createdb(
     compressed: bool = False,
     createdb_mode: int = 0,
     dbtype: int = 0,
+    gpu: int = 0,
+    threads: Union[str, int] = 'all',
 
 ) -> CreateDBParser:
     """
@@ -45,13 +47,23 @@ def createdb(
         Database creation mode
         - 0: Copy data (default)
         - 1: Soft-link data and write a new index (only works with single-line FASTA/Q)
-    
+        - 2: GPU compatible db
+
     `dbtype` : int, optional
         Database type
         - 0: Auto-detect (default)
         - 1: Amino acid sequences
         - 2: Nucleotide sequences
-    
+
+    `gpu` : int, optional
+        Build a GPU-compatible database using CUDA if possible
+        - 0: off (default)
+        - 1: on
+
+    `threads` : Union[str, int], optional
+        Number of CPU cores to use
+        - 'all' (default), converted to all available cores
+
     Returns
     -------
     CreateDBParser object
@@ -65,6 +77,8 @@ def createdb(
         compressed=compressed,
         createdb_mode=createdb_mode,
         dbtype=dbtype,
+        gpu=gpu,
+        threads=threads,
     )
 
     config.run()
