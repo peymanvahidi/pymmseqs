@@ -4,7 +4,17 @@ import subprocess
 from pathlib import Path
 import tempfile
 
-from pymmseqs.config import CreateDBConfig, EasyLinClustConfig, EasyRbhConfig, EasyTaxonomyConfig
+from pymmseqs.config import (
+    ConvertAlisConfig,
+    Convert2FastaConfig,
+    CreateDBConfig,
+    EasyClusterConfig,
+    EasyLinClustConfig,
+    EasyLinSearchConfig,
+    EasyRbhConfig,
+    EasyTaxonomyConfig,
+    ExtractOrfsConfig,
+)
 from pymmseqs.parsers.base_cluster_parser import BaseClusterParser
 
 
@@ -80,6 +90,36 @@ class TestCreateDB(unittest.TestCase):
                         f2.read(),
                         f"Content mismatch in {filename}"
                     )
+
+    def test_createdb_v18_args(self):
+        """Verify v18 params (gpu, createdb_mode=2, mask family) generate correct CLI args."""
+        config = CreateDBConfig(
+            fasta_file="/tmp/test_input.fasta",
+            sequence_db="/tmp/test_db",
+            createdb_mode=2,
+            gpu=1,
+            mask=0,
+        )
+        # Skip file-existence checks for arg-generation test
+        config._check_required_files = lambda: None
+
+        args = config._get_command_args("createdb")
+
+        self.assertEqual(args[0], "createdb")
+
+        # Non-default v18 params appear as flags
+        self.assertIn("--gpu", args)
+        self.assertEqual(args[args.index("--gpu") + 1], "1")
+
+        self.assertIn("--createdb-mode", args)
+        self.assertEqual(args[args.index("--createdb-mode") + 1], "2")
+
+        self.assertIn("--mask", args)
+        self.assertEqual(args[args.index("--mask") + 1], "0")
+
+        # Params left at default are omitted
+        self.assertNotIn("--mask-prob", args)
+        self.assertNotIn("--mask-n-repeat", args)
 
 
 class TestEasyLinClust(unittest.TestCase):
@@ -158,6 +198,76 @@ class TestEasyLinClust(unittest.TestCase):
                         f2.read(),
                         f"Content mismatch in {filename}"
                     )
+
+    def test_easy_linclust_v18_args(self):
+        """Verify v18 resync params (gpu + previously-dropped sub_mat/max_seq_len/db_load_mode) emit."""
+        config = EasyLinClustConfig(
+            fasta_files="/tmp/in.fasta",
+            cluster_prefix="/tmp/result",
+            tmp_dir="/tmp/tmp",
+            gpu=1,
+            max_seq_len=1000,
+            db_load_mode=2,
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+        args = config._get_command_args("easy-linclust")
+
+        self.assertEqual(args[0], "easy-linclust")
+        self.assertIn("--gpu", args)
+        self.assertEqual(args[args.index("--gpu") + 1], "1")
+        self.assertIn("--max-seq-len", args)
+        self.assertEqual(args[args.index("--max-seq-len") + 1], "1000")
+        self.assertIn("--db-load-mode", args)
+        self.assertEqual(args[args.index("--db-load-mode") + 1], "2")
+
+    def test_easy_linclust_defaults_omit_v18_args(self):
+        """At defaults, the resynced params must NOT be emitted (byte-for-byte safety)."""
+        config = EasyLinClustConfig(
+            fasta_files="/tmp/in.fasta",
+            cluster_prefix="/tmp/result",
+            tmp_dir="/tmp/tmp",
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+        args = config._get_command_args("easy-linclust")
+        for flag in ("--gpu", "--sub-mat", "--max-seq-len", "--db-load-mode"):
+            self.assertNotIn(flag, args)
+
+
+class TestEasyCluster(unittest.TestCase):
+    """Test easy_cluster CLI argument generation (v18 --gpu resync)."""
+
+    def test_easy_cluster_v18_args(self):
+        """Verify --gpu and --createdb-mode emit when set non-default."""
+        config = EasyClusterConfig(
+            fasta_files="/tmp/in.fasta",
+            cluster_prefix="/tmp/result",
+            tmp_dir="/tmp/tmp",
+            gpu=1,
+            createdb_mode=2,
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+        args = config._get_command_args("easy-cluster")
+
+        self.assertEqual(args[0], "easy-cluster")
+        self.assertIn("--gpu", args)
+        self.assertEqual(args[args.index("--gpu") + 1], "1")
+        self.assertIn("--createdb-mode", args)
+        self.assertEqual(args[args.index("--createdb-mode") + 1], "2")
+
+    def test_easy_cluster_default_gpu_omitted(self):
+        """gpu defaults to 0 and must be omitted."""
+        config = EasyClusterConfig(
+            fasta_files="/tmp/in.fasta",
+            cluster_prefix="/tmp/result",
+            tmp_dir="/tmp/tmp",
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+        args = config._get_command_args("easy-cluster")
+        self.assertNotIn("--gpu", args)
 
 
 class TestBaseClusterParser(unittest.TestCase):
@@ -286,6 +396,154 @@ class TestEasyRbh(unittest.TestCase):
 
         # createdb_mode=1 is the default for easy_rbh, so it should NOT appear
         self.assertNotIn("--createdb-mode", args)
+
+
+class TestEasyLinSearch(unittest.TestCase):
+    """Test easy_linsearch CLI argument generation and parser integration."""
+
+    def test_easy_linsearch_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = EasyLinSearchConfig(
+            query_fasta="/tmp/test_query.fasta",
+            target_fasta_or_db="/tmp/test_target.fasta",
+            alignment_file="/tmp/test_result",
+            tmp_dir="/tmp/test_tmp",
+            # Non-default params to verify they appear
+            format_mode=4,
+            e=0.01,
+            min_seq_id=0.5,
+        )
+
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("easy_linsearch")
+
+        # Verify command name (underscores -> hyphens)
+        self.assertEqual(args[0], "easy-linsearch")
+
+        # Verify required positional args in order
+        self.assertEqual(args[1], "/tmp/test_query.fasta")
+        self.assertEqual(args[2], "/tmp/test_target.fasta")
+        self.assertEqual(args[3], "/tmp/test_result")
+        self.assertEqual(args[4], "/tmp/test_tmp")
+
+        # format_mode=4 is required by EasySearchParser
+        self.assertIn("--format-mode", args)
+        self.assertEqual(args[args.index("--format-mode") + 1], "4")
+
+        self.assertIn("-e", args)
+        self.assertEqual(args[args.index("-e") + 1], "0.01")
+
+        self.assertIn("--min-seq-id", args)
+        self.assertEqual(args[args.index("--min-seq-id") + 1], "0.5")
+
+    def test_easy_linsearch_end_to_end(self):
+        """Run easy_linsearch and verify it returns a working EasySearchParser.
+
+        Note: easy-linsearch is the fast/less-sensitive linear search and may
+        legitimately return zero hits for a small protein input, so this asserts
+        the command + parser wiring (format_mode=4 header parsed, output produced)
+        rather than the presence of a hit.
+        """
+        from pymmseqs.commands.easy_linsearch import easy_linsearch
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            query = tmp_path / "query.fasta"
+            target = tmp_path / "target.fasta"
+            # Diverse ~127-residue protein fragment (avoids low-complexity masking)
+            seq = (
+                "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKAL"
+                "PDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGE"
+            )
+            query.write_text(f">q1\n{seq}\n")
+            target.write_text(f">t1\n{seq}\n")
+            out = tmp_path / "aln.m8"
+
+            parser = easy_linsearch(query, target, out, tmp_dir=tmp_path / "tmp")
+
+            # Parser is wired to the alignment file and parses the format_mode=4 header
+            self.assertTrue(Path(parser.to_path()).exists())
+            df = parser.to_pandas()
+            for col in ("query", "target", "fident", "evalue", "bits"):
+                self.assertIn(col, df.columns)
+
+
+class TestConvertAlis(unittest.TestCase):
+    """Test convertalis CLI argument generation and parser integration."""
+
+    def test_convertalis_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = ConvertAlisConfig(
+            query_db="/tmp/qdb",
+            target_db="/tmp/tdb",
+            alignment_db="/tmp/alndb",
+            alignment_file="/tmp/out.m8",
+            # Non-default params to verify they appear
+            format_mode=4,
+            search_type=3,
+        )
+
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("convertalis")
+
+        self.assertEqual(args[0], "convertalis")
+
+        # Verify required positional args in order
+        self.assertEqual(args[1], "/tmp/qdb")
+        self.assertEqual(args[2], "/tmp/tdb")
+        self.assertEqual(args[3], "/tmp/alndb")
+        self.assertEqual(args[4], "/tmp/out.m8")
+
+        # format_mode=4 is required by EasySearchParser
+        self.assertIn("--format-mode", args)
+        self.assertEqual(args[args.index("--format-mode") + 1], "4")
+
+        self.assertIn("--search-type", args)
+        self.assertEqual(args[args.index("--search-type") + 1], "3")
+
+    def test_convertalis_end_to_end(self):
+        """createdb -> search -> convertalis should yield a parsable alignment table."""
+        from pymmseqs.commands.convertalis import convertalis
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            seq = (
+                "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKAL"
+                "PDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGE"
+            )
+            query = tmp_path / "q.fasta"
+            target = tmp_path / "t.fasta"
+            query.write_text(f">q1\n{seq}\n")
+            target.write_text(f">t1\n{seq}\n")
+
+            qdb = tmp_path / "qdb"
+            tdb = tmp_path / "tdb"
+            alndb = tmp_path / "alndb"
+            mmtmp = tmp_path / "mmtmp"
+            mmtmp.mkdir()
+
+            # Build inputs with the mmseqs CLI (isolates the convertalis wrapper under test)
+            for src, db in ((query, qdb), (target, tdb)):
+                subprocess.run(
+                    ["mmseqs", "createdb", str(src), str(db)],
+                    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                )
+            subprocess.run(
+                ["mmseqs", "search", str(qdb), str(tdb), str(alndb), str(mmtmp)],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+
+            out = tmp_path / "out.m8"
+            parser = convertalis(qdb, tdb, alndb, out)
+            df = parser.to_pandas()
+
+            self.assertIn("query", df.columns)
+            self.assertIn("target", df.columns)
+            self.assertGreaterEqual(len(df), 1)
 
 
 class TestEasyTaxonomy(unittest.TestCase):
@@ -695,6 +953,138 @@ class TestEasyRbhParser(unittest.TestCase):
             self.assertIsInstance(row["bits"], int)
         finally:
             os.unlink(tmp_file)
+
+
+class TestConvert2Fasta(unittest.TestCase):
+    """Test convert2fasta CLI argument generation and parser integration."""
+
+    def test_convert2fasta_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = Convert2FastaConfig(
+            sequence_db="/tmp/seqdb",
+            fasta_file="/tmp/out.fasta",
+            use_header_file=True,
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("convert2fasta")
+
+        self.assertEqual(args[0], "convert2fasta")
+        self.assertEqual(args[1], "/tmp/seqdb")
+        self.assertEqual(args[2], "/tmp/out.fasta")
+
+        # Non-default bool appears as "1"
+        self.assertIn("--use-header-file", args)
+        self.assertEqual(args[args.index("--use-header-file") + 1], "1")
+
+    def test_convert2fasta_end_to_end(self):
+        """createdb -> convert2fasta should round-trip sequences back to FASTA."""
+        from pymmseqs.commands.createdb import createdb
+        from pymmseqs.commands.convert2fasta import convert2fasta
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            fasta = tmp_path / "in.fasta"
+            fasta.write_text(">s1\nACDEFGHIKL\n>s2\nMNPQRSTVWY\n")
+
+            createdb(fasta, tmp_path / "seqdb")
+            parser = convert2fasta(tmp_path / "seqdb", tmp_path / "out.fasta")
+
+            df = parser.to_pandas()
+            self.assertEqual(list(df.columns), ["header", "sequence"])
+            self.assertEqual(len(parser), 2)
+            self.assertEqual(set(df["sequence"]), {"ACDEFGHIKL", "MNPQRSTVWY"})
+
+            # to_list / to_gen / to_path coverage
+            self.assertEqual(len(parser.to_list()), 2)
+            self.assertEqual(len(list(parser.to_gen())), 2)
+            self.assertTrue(Path(parser.to_path()).exists())
+
+
+class TestExtractOrfs(unittest.TestCase):
+    """Test extractorfs CLI argument generation and parser integration."""
+
+    # Contig with a clean forward ORF (ATG ... TAA)
+    CONTIG = (
+        "ATGGCAAAACGTTTAGCAGAAGAACTGGGCATTGAAGTGCAGGCACCGATTCTGAGCCGTGTT"
+        "GGCGATGGCACCCAGGATAACCTGAGCGGCGCAGAAAAAGCAGTGCAGGTGAAAGTGAAAGCA"
+        "CTGCCGGATGCACAGTTTGAAGTGTAA"
+    )
+
+    def test_extractorfs_args_match_cli(self):
+        """Verify generated CLI args match expected mmseqs command."""
+        config = ExtractOrfsConfig(
+            sequence_db="/tmp/ntdb",
+            orf_db="/tmp/orfdb",
+            min_length=10,
+            translate=True,
+            orf_start_mode=0,
+        )
+        config._check_required_files = lambda: None
+        config._caller_dir = Path("/tmp")
+
+        args = config._get_command_args("extractorfs")
+
+        self.assertEqual(args[0], "extractorfs")
+        self.assertEqual(args[1], "/tmp/ntdb")
+        self.assertEqual(args[2], "/tmp/orfdb")
+
+        self.assertIn("--min-length", args)
+        self.assertEqual(args[args.index("--min-length") + 1], "10")
+
+        self.assertIn("--translate", args)
+        self.assertEqual(args[args.index("--translate") + 1], "1")
+
+        self.assertIn("--orf-start-mode", args)
+        self.assertEqual(args[args.index("--orf-start-mode") + 1], "0")
+
+        # Defaults are omitted
+        self.assertNotIn("--max-length", args)
+        self.assertNotIn("--contig-start-mode", args)
+
+    def test_extractorfs_end_to_end(self):
+        """createdb -> extractorfs should yield a coordinate-bearing ORF table."""
+        from pymmseqs.commands.createdb import createdb
+        from pymmseqs.commands.extractorfs import extractorfs
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            nt = tmp_path / "nt.fasta"
+            nt.write_text(f">contig1 example\n{self.CONTIG}\n")
+
+            createdb(nt, tmp_path / "ntdb")
+            parser = extractorfs(tmp_path / "ntdb", tmp_path / "orfdb", min_length=10)
+
+            df = parser.to_pandas()
+            for col in ("orf_id", "source_id", "source_name", "start", "end",
+                        "strand", "length", "sequence"):
+                self.assertIn(col, df.columns)
+
+            self.assertGreaterEqual(len(parser), 1)
+            # Source key resolved back to the original contig accession
+            self.assertIn("contig1", set(df["source_name"]))
+            # Strands are limited to +/-
+            self.assertTrue(set(df["strand"].dropna()).issubset({"+", "-"}))
+
+            # Coordinates are absolute positions on the contig: end>start on '+',
+            # end<start on '-', and abs(end-start)+1 == length for every ORF.
+            coord = df.dropna(subset=["start", "end", "strand"])
+            for _, r in coord.iterrows():
+                self.assertEqual(abs(int(r["end"]) - int(r["start"])) + 1, int(r["length"]))
+                if r["strand"] == "+":
+                    self.assertGreaterEqual(int(r["end"]), int(r["start"]))
+                else:
+                    self.assertLessEqual(int(r["end"]), int(r["start"]))
+
+            # to_gen() and to_list() agree
+            self.assertEqual(len(list(parser.to_gen())), len(parser.to_list()))
+
+            stats = parser.summary()
+            for key in ("total_orfs", "source_sequences", "forward_orfs",
+                        "reverse_orfs", "mean_length"):
+                self.assertIn(key, stats)
+            self.assertEqual(stats["source_sequences"], 1)
 
 
 if __name__ == "__main__":
