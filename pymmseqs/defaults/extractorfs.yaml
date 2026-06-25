@@ -1,0 +1,163 @@
+# pymmseqs/defaults/extractorfs.yaml
+
+sequence_db:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "Input (nucleotide) sequence database"
+  twin: False
+  should_exist: True
+
+orf_db:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "Output ORF sequence database"
+  twin: False
+  should_exist: False
+
+min_length:
+  required: False
+  type: int
+  default: 30
+  choices: null
+  description: "Minimum codon number in open reading frames"
+  twin: False
+  should_exist: False
+
+max_length:
+  required: False
+  type: int
+  default: 32734
+  choices: null
+  description: "Maximum codon number in open reading frames"
+  twin: False
+  should_exist: False
+
+max_gaps:
+  required: False
+  type: int
+  default: 2147483647
+  choices: null
+  description: "Maximum number of codons with gaps or unknown residues before an open reading frame is rejected"
+  twin: False
+  should_exist: False
+
+contig_start_mode:
+  required: False
+  type: int
+  default: 2
+  choices: [0, 1, 2]
+  description: "Contig start can be 0: incomplete, 1: complete, 2: both"
+  twin: False
+  should_exist: False
+
+contig_end_mode:
+  required: False
+  type: int
+  default: 2
+  choices: [0, 1, 2]
+  description: "Contig end can be 0: incomplete, 1: complete, 2: both"
+  twin: False
+  should_exist: False
+
+orf_start_mode:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1, 2]
+  description: "Orf fragment can be 0: from start to stop, 1: from any to stop, 2: from last encountered start to stop (no start in the middle)"
+  twin: False
+  should_exist: False
+
+forward_frames:
+  required: False
+  type: str
+  default: "1,2,3"
+  choices: null
+  description: "Comma-separated list of frames on the forward strand to be extracted"
+  twin: False
+  should_exist: False
+
+reverse_frames:
+  required: False
+  type: str
+  default: "1,2,3"
+  choices: null
+  description: "Comma-separated list of frames on the reverse strand to be extracted"
+  twin: False
+  should_exist: False
+
+translation_table:
+  required: False
+  type: int
+  default: 1
+  choices: null
+  description: "Genetic code table to use (1: canonical, 11: prokaryote, ...)"
+  twin: False
+  should_exist: False
+
+translate:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Translate ORF to amino acid"
+  twin: False
+  should_exist: False
+
+use_all_table_starts:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Use all alternatives for a start codon in the genetic table, if false - only ATG (AUG)"
+  twin: False
+  should_exist: False
+
+id_offset:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Numeric ids in index file are offset by this value"
+  twin: False
+  should_exist: False
+
+threads:
+  required: False
+  type: int
+  default: 'all'
+  choices: null
+  description: "Number of CPU-cores used (all by default)"
+  twin: False
+  should_exist: False
+
+compressed:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Write compressed output"
+  twin: False
+  should_exist: False
+
+v:
+  required: False
+  type: int
+  default: 3
+  choices: [0, 1, 2, 3]
+  description: "Verbosity level: 0: quiet, 1: +errors, 2: +warnings, 3: +info"
+  twin: False
+  should_exist: False
+
+create_lookup:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Create database lookup file (can be very large)"
+  twin: False
+  should_exist: False
