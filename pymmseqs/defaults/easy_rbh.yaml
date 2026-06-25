@@ -1,20 +1,29 @@
-# mmseqs/defaults/easy_cluster.yaml
+# pymmseqs/defaults/easy_rbh.yaml
 
-fasta_files:
+query_fasta:
   required: True
   type: path
   default: ""
   choices: null
-  description: "The input fasta files, potentially compressed as .gz or .bz2"
+  description: "The input query fasta file, potentially compressed as .gz or .bz2"
   twin: False
   should_exist: True
 
-cluster_prefix:
+target_fasta_or_db:
   required: True
   type: path
   default: ""
   choices: null
-  description: "Prefix for cluster output files"
+  description: "The target fasta file or database, potentially compressed as .gz for files"
+  twin: False
+  should_exist: True
+
+alignment_file:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "File where reciprocal best hit alignments are stored"
   twin: False
   should_exist: False
 
@@ -24,6 +33,33 @@ tmp_dir:
   default: ""
   choices: null
   description: "Temporary directory where temporary files are saved"
+  twin: False
+  should_exist: False
+
+comp_bias_corr:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Correct for locally biased amino acid composition, with range 0-1"
+  twin: False
+  should_exist: False
+
+comp_bias_corr_scale:
+  required: False
+  type: float
+  default: 1.000
+  choices: null
+  description: "Scale for correcting locally biased amino acid composition, range 0-1"
+  twin: False
+  should_exist: False
+
+add_self_matches:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Artificially add entries of queries with themselves for clustering"
   twin: False
   should_exist: False
 
@@ -39,7 +75,7 @@ seed_sub_mat:
 s:
   required: False
   type: float
-  default: 4.000
+  default: 5.700
   choices: null
   description: "Sensitivity settings, where 1.0 is faster and 7.5 is more sensitive"
   twin: False
@@ -84,7 +120,7 @@ alph_size:
 max_seqs:
   required: False
   type: int
-  default: 20
+  default: 300
   choices: null
   description: "Maximum results per query sequence allowed to pass the prefilter"
   twin: False
@@ -114,24 +150,6 @@ split_memory_limit:
   default: "0"
   choices: null
   description: "Max memory per split, with units like B, K, M, G; defaults to all available system memory if set to 0"
-  twin: False
-  should_exist: False
-
-comp_bias_corr:
-  required: False
-  type: int
-  default: 1
-  choices: [0, 1]
-  description: "Correct for locally biased amino acid composition, with range 0-1"
-  twin: False
-  should_exist: False
-
-comp_bias_corr_scale:
-  required: False
-  type: float
-  default: 1.000
-  choices: null
-  description: "Scale for correcting locally biased amino acid composition, range 0-1"
   twin: False
   should_exist: False
 
@@ -198,15 +216,6 @@ min_ungapped_score:
   twin: False
   should_exist: False
 
-add_self_matches:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Artificially add entries of queries with themselves for clustering"
-  twin: False
-  should_exist: False
-
 spaced_kmer_mode:
   required: False
   type: int
@@ -234,21 +243,12 @@ local_tmp:
   twin: False
   should_exist: False
 
-c:
+disk_space_limit:
   required: False
-  type: float
-  default: 0.800
+  type: str
+  default: "0"
   choices: null
-  description: "List matches above this fraction of aligned (covered) residues"
-  twin: False
-  should_exist: False
-
-cov_mode:
-  required: False
-  type: int
-  default: 0
-  choices: [0, 1, 2, 3, 4, 5]
-  description: "Coverage mode for alignment"
+  description: "Set max disk space to use for reverse profile searches, with units like B, K, M, G; defaults to all available disk space in the temp folder if set to 0"
   twin: False
   should_exist: False
 
@@ -291,7 +291,7 @@ wrapped_scoring:
 e:
   required: False
   type: float
-  default: 0.001
+  default: 1.000E-03
   choices: null
   description: "List matches below this E-value, range 0.0-inf"
   twin: False
@@ -330,6 +330,24 @@ alt_ali:
   default: 0
   choices: null
   description: "Show up to this many alternative alignments"
+  twin: False
+  should_exist: False
+
+c:
+  required: False
+  type: float
+  default: 0.000
+  choices: null
+  description: "List matches above this fraction of aligned (covered) residues"
+  twin: False
+  should_exist: False
+
+cov_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1, 2, 3, 4, 5]
+  description: "Coverage mode for alignment"
   twin: False
   should_exist: False
 
@@ -423,129 +441,12 @@ zdrop:
   twin: False
   should_exist: False
 
-cluster_mode:
+exhaustive_search_filter:
   required: False
   type: int
   default: 0
-  choices: [0, 1, 2, 3]
-  description: "Clustering mode: 0 Set-Cover (greedy), 1 Connected component (BLASTclust), 2,3 Greedy clustering by sequence length (CDHIT)"
-  twin: False
-  should_exist: False
-
-max_iterations:
-  required: False
-  type: int
-  default: 1000
-  choices: null
-  description: "Maximum depth of breadth first search in connected component clustering"
-  twin: False
-  should_exist: False
-
-similarity_type:
-  required: False
-  type: int
-  default: 2
-  choices: [1, 2]
-  description: "Type of score used for clustering: 1 alignment score, 2 sequence identity"
-  twin: False
-  should_exist: False
-
-single_step_clustering:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Switch from cascaded to simple clustering workflow"
-  twin: False
-  should_exist: False
-
-cluster_steps:
-  required: False
-  type: int
-  default: 3
-  choices: null
-  description: "Cascaded clustering steps from 1 to -s"
-  twin: False
-  should_exist: False
-
-cluster_reassign:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Cascaded clustering can cluster sequence that do not fulfill the clustering criteria. Cluster reassignment corrects these errors"
-  twin: False
-  should_exist: False
-
-weights:
-  required: False
-  type: str
-  default: ""
-  choices: null
-  description: "Weights used for cluster prioritization"
-  twin: False
-  should_exist: False
-
-cluster_weight_threshold:
-  required: False
-  type: float
-  default: 0.900
-  choices: null
-  description: "Weight threshold used for cluster prioritization"
-  twin: False
-  should_exist: False
-
-kmer_per_seq:
-  required: False
-  type: int
-  default: 21
-  choices: null
-  description: "k-mers per sequence"
-  twin: False
-  should_exist: False
-
-kmer_per_seq_scale:
-  required: False
-  type: comma_separated_str
-  default: "aa:0.0,nucl:0.2"
-  choices: null
-  description: "Scale k-mer per sequence based on sequence length as kmer-per-seq val + scale x seqlen"
-  twin: True
-  should_exist: False
-
-adjust_kmer_len:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Adjust k-mer length based on specificity (only for nucleotides)"
-  twin: False
-  should_exist: False
-
-hash_shift:
-  required: False
-  type: int
-  default: 67
-  choices: null
-  description: "Shift k-mer hash initialization"
-  twin: False
-  should_exist: False
-
-include_only_extendable:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Include only extendable"
-  twin: False
-  should_exist: False
-
-ignore_multi_kmer:
-  required: False
-  type: bool
-  default: False
-  choices: [True, False]
-  description: "Skip k-mers occurring multiple times (>=2)"
+  choices: [0, 1]
+  description: "Filter result during search, 0 do not filter, 1 filter"
   twin: False
   should_exist: False
 
@@ -567,6 +468,141 @@ pcb:
   twin: False
   should_exist: False
 
+mask_profile:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Mask query sequence of profile using tantan"
+  twin: False
+  should_exist: False
+
+e_profile:
+  required: False
+  type: float
+  default: 0.001
+  choices: null
+  description: "Include sequences matches with E-value threshold into the profile (>=0.0)"
+  twin: False
+  should_exist: False
+
+wg:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Use global sequence weighting for profile calculation"
+  twin: False
+  should_exist: False
+
+filter_msa:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Filter MSA, 0: do not filter, 1: filter"
+  twin: False
+  should_exist: False
+
+filter_min_enable:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Only filter MSAs with more than N sequences, 0 always filters"
+  twin: False
+  should_exist: False
+
+max_seq_id:
+  required: False
+  type: float
+  default: 0.900
+  choices: null
+  description: "Reduce redundancy of output MSA using max. pairwise sequence identity (0.0-1.0)"
+  twin: False
+  should_exist: False
+
+qid:
+  required: False
+  type: str
+  default: "0.0"
+  choices: null
+  description: "Reduce diversity of output MSAs using min.seq. identity with query sequences (0.0-1.0), list of thresholds possible"
+  twin: False
+  should_exist: False
+
+qsc:
+  required: False
+  type: float
+  default: -20.000
+  choices: null
+  description: "Reduce diversity of output MSAs using min. score per aligned residue with query sequences (-50.0-100.0)"
+  twin: False
+  should_exist: False
+
+cov:
+  required: False
+  type: float
+  default: 0.000
+  choices: null
+  description: "Filter output MSAs using min. fraction of query residues covered by matched sequences (0.0-1.0)"
+  twin: False
+  should_exist: False
+
+diff:
+  required: False
+  type: int
+  default: 1000
+  choices: null
+  description: "Filter MSAs by selecting most diverse set of sequences, keeping at least this many seqs in each MSA block of length 50"
+  twin: False
+  should_exist: False
+
+pseudo_cnt_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Use 0: substitution-matrix or 1: context-specific pseudocounts for profile generation"
+  twin: False
+  should_exist: False
+
+profile_output_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Profile output mode: 0: binary log-odds, 1: human-readable frequencies"
+  twin: False
+  should_exist: False
+
+num_iterations:
+  required: False
+  type: int
+  default: 1
+  choices: null
+  description: "Number of iterative profile search iterations"
+  twin: False
+  should_exist: False
+
+exhaustive_search:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "For bigger profile DB, run iteratively the search by greedily swapping the search results"
+  twin: False
+  should_exist: False
+
+lca_search:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Efficient search for LCA candidates"
+  twin: False
+  should_exist: False
+
 taxon_list:
   required: False
   type: str
@@ -576,12 +612,228 @@ taxon_list:
   twin: False
   should_exist: False
 
+prefilter_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1, 2, 3]
+  description: "Prefilter mode: 0: kmer/ungapped, 1: ungapped, 2: nofilter, 3: ungapped&gapped"
+  twin: False
+  should_exist: False
+
 rescore_mode:
   required: False
   type: int
   default: 0
   choices: [0, 1, 2, 3, 4]
   description: "Rescore diagonals with different methods"
+  twin: False
+  should_exist: False
+
+allow_deletion:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Allow deletions in a MSA"
+  twin: False
+  should_exist: False
+
+min_length:
+  required: False
+  type: int
+  default: 30
+  choices: null
+  description: "Minimum codon number in open reading frames"
+  twin: False
+  should_exist: False
+
+max_length:
+  required: False
+  type: int
+  default: 32734
+  choices: null
+  description: "Maximum codon number in open reading frames"
+  twin: False
+  should_exist: False
+
+max_gaps:
+  required: False
+  type: int
+  default: 2147483647
+  choices: null
+  description: "Maximum number of codons with gaps or unknown residues before an open reading frame is rejected"
+  twin: False
+  should_exist: False
+
+contig_start_mode:
+  required: False
+  type: int
+  default: 2
+  choices: [0, 1, 2]
+  description: "Contig start can be 0: incomplete, 1: complete, 2: both"
+  twin: False
+  should_exist: False
+
+contig_end_mode:
+  required: False
+  type: int
+  default: 2
+  choices: [0, 1, 2]
+  description: "Contig end can be 0: incomplete, 1: complete, 2: both"
+  twin: False
+  should_exist: False
+
+orf_start_mode:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1, 2]
+  description: "Orf fragment can be 0: from start to stop, 1: from any to stop, 2: from last encountered start to stop (no start in the middle)"
+  twin: False
+  should_exist: False
+
+forward_frames:
+  required: False
+  type: comma_separated_str
+  default: "1,2,3"
+  choices: null
+  description: "Comma-separated list of frames on the forward strand to be extracted"
+  twin: False
+  should_exist: False
+
+reverse_frames:
+  required: False
+  type: comma_separated_str
+  default: "1,2,3"
+  choices: null
+  description: "Comma-separated list of frames on the reverse strand to be extracted"
+  twin: False
+  should_exist: False
+
+translation_table:
+  required: False
+  type: int
+  default: 1
+  choices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+  description: "Select genetic code for translation: 1) CANONICAL, 2) VERT_MITOCHONDRIAL, etc."
+  twin: False
+  should_exist: False
+
+translate:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Translate ORF to amino acid"
+  twin: False
+  should_exist: False
+
+use_all_table_starts:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Use all alternatives for a start codon in the genetic table, if false - only ATG (AUG)"
+  twin: False
+  should_exist: False
+
+id_offset:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Numeric ids in index file are offset by this value"
+  twin: False
+  should_exist: False
+
+sequence_overlap:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Overlap between sequences"
+  twin: False
+  should_exist: False
+
+sequence_split_mode:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Sequence split mode 0: copy data, 1: soft link data and write new index"
+  twin: False
+  should_exist: False
+
+headers_split_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Header split mode: 0: split position, 1: original header"
+  twin: False
+  should_exist: False
+
+search_type:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1, 2, 3, 4]
+  description: "Search type 0: auto 1: amino acid, 2: translated, 3: nucleotide, 4: translated nucleotide alignment"
+  twin: False
+  should_exist: False
+
+start_sens:
+  required: False
+  type: float
+  default: 4.000
+  choices: null
+  description: "Start sensitivity"
+  twin: False
+  should_exist: False
+
+sens_steps:
+  required: False
+  type: int
+  default: 1
+  choices: null
+  description: "Number of search steps performed from --start-sens to -s"
+  twin: False
+  should_exist: False
+
+translation_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Translation AA seq from nucleotide by 0: ORFs, 1: full reading frames"
+  twin: False
+  should_exist: False
+
+format_mode:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1, 2, 3, 4]
+  description: "Output format: 0: BLAST-TAB, 1: SAM, etc."
+  twin: False
+  should_exist: False
+
+format_output:
+  required: False
+  type: comma_separated_str
+  default: "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits"
+  choices: null
+  description: "Choose comma-separated list of output columns for the format specified in --format-mode"
+  twin: False
+  should_exist: False
+
+overlap:
+  required: False
+  type: float
+  default: 0.000
+  choices: null
+  description: "Maximum overlap of covered regions"
   twin: False
   should_exist: False
 
@@ -608,16 +860,16 @@ createdb_mode:
   type: int
   default: 1
   choices: [0, 1, 2]
-  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q) 2: GPU compatible db"
+  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q), 2: GPU compatible db"
   twin: False
   should_exist: False
 
-id_offset:
+greedy_best_hits:
   required: False
-  type: int
-  default: 0
-  choices: null
-  description: "Numeric ids in index file are offset by this value"
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Choose the best hits greedily to cover the query"
   twin: False
   should_exist: False
 
@@ -648,19 +900,10 @@ db_load_mode:
   twin: False
   should_exist: False
 
-gpu:
-  required: False
-  type: int
-  default: 0
-  choices: [0, 1]
-  description: "Use GPU (CUDA) if possible"
-  twin: False
-  should_exist: False
-
 threads:
   required: False
   type: int
-  default: "all"
+  default: 'all'
   choices: null
   description: "Number of CPU-cores used (all by default)"
   twin: False
@@ -668,9 +911,9 @@ threads:
 
 compressed:
   required: False
-  type: int
-  default: 0
-  choices: null
+  type: bool
+  default: False
+  choices: [True, False]
   description: "Write compressed output"
   twin: False
   should_exist: False
@@ -684,12 +927,39 @@ v:
   twin: False
   should_exist: False
 
-remove_tmp_files:
+gpu:
   required: False
   type: bool
-  default: True
+  default: False
   choices: [True, False]
-  description: "Delete temporary files"
+  description: "Use GPU (CUDA) if possible"
+  twin: False
+  should_exist: False
+
+gpu_server:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Use GPU server"
+  twin: False
+  should_exist: False
+
+gpu_server_wait_timeout:
+  required: False
+  type: int
+  default: 600
+  choices: null
+  description: "Wait for GPU server for 0: don't wait -1: no wait limit: >0 this many seconds"
+  twin: False
+  should_exist: False
+
+mpi_runner:
+  required: False
+  type: str
+  default: ""
+  choices: null
+  description: "Use MPI on compute cluster with this MPI command (e.g. 'mpirun -np 42')"
   twin: False
   should_exist: False
 
@@ -702,12 +972,12 @@ force_reuse:
   twin: False
   should_exist: False
 
-mpi_runner:
+remove_tmp_files:
   required: False
-  type: str
-  default: ""
-  choices: null
-  description: "Use MPI on compute cluster with this MPI command (e.g. 'mpirun -np 42')"
+  type: bool
+  default: True
+  choices: [True, False]
+  description: "Delete temporary files"
   twin: False
   should_exist: False
 
@@ -726,6 +996,51 @@ sort_results:
   default: 0
   choices: [0, 1]
   description: "Sort results: 0: no sorting, 1: sort by E-value (Alignment) or seq.id. (Hamming)"
+  twin: False
+  should_exist: False
+
+create_lookup:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Create database lookup file (can be very large)"
+  twin: False
+  should_exist: False
+
+chain_alignments:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Chain overlapping alignments"
+  twin: False
+  should_exist: False
+
+merge_query:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Combine ORFs/split sequences to a single entry"
+  twin: False
+  should_exist: False
+
+strand:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1, 2]
+  description: "Strand selection only works for DNA/DNA search 0: reverse, 1: forward, 2: both"
+  twin: False
+  should_exist: False
+
+db_output:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "Return a result DB instead of a text file"
   twin: False
   should_exist: False
 

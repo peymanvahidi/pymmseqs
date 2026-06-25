@@ -1,0 +1,37 @@
+# pymmseqs/defaults/convert2fasta.yaml
+
+sequence_db:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "Input sequence database"
+  twin: False
+  should_exist: True
+
+fasta_file:
+  required: True
+  type: path
+  default: ""
+  choices: null
+  description: "Output FASTA file"
+  twin: False
+  should_exist: False
+
+use_header_file:
+  required: False
+  type: bool
+  default: False
+  choices: [True, False]
+  description: "use the sequence header DB instead of the body to map the entry keys"
+  twin: False
+  should_exist: False
+
+v:
+  required: False
+  type: int
+  default: 3
+  choices: [0, 1, 2, 3]
+  description: "Verbosity level: 0: quiet, 1: +errors, 2: +warnings, 3: +info"
+  twin: False
+  should_exist: False

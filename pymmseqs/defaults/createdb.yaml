@@ -40,8 +40,8 @@ createdb_mode:
   required: False
   type: int
   default: 0
-  choices: [0, 1]
-  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q)"
+  choices: [0, 1, 2]
+  description: "Createdb mode 0: copy data, 1: soft link data and write new index (works only with single line fasta/q) 2: GPU compatible db"
   twin: False
   should_exist: False
 
@@ -54,12 +54,57 @@ id_offset:
   twin: False
   should_exist: False
 
+mask:
+  required: False
+  type: int
+  default: 1
+  choices: [0, 1]
+  description: "Mask sequences in prefilter stage with tantan: 0: w/o low complexity masking, 1: with low complexity masking"
+  twin: False
+  should_exist: False
+
+mask_prob:
+  required: False
+  type: float
+  default: 0.9
+  choices: null
+  description: "Mask sequences if probability is above threshold"
+  twin: False
+  should_exist: False
+
+mask_lower_case:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Lowercase letters will be excluded from k-mer search 0: include region, 1: exclude region"
+  twin: False
+  should_exist: False
+
+mask_n_repeat:
+  required: False
+  type: int
+  default: 0
+  choices: null
+  description: "Repeat letters that occur > threshold in a row"
+  twin: False
+  should_exist: False
+
 compressed:
   required: False
   type: bool
   default: False
   choices: [True, False]
   description: "Write compressed output"
+  twin: False
+  should_exist: False
+
+gpu:
+  required: False
+  type: int
+  default: 0
+  choices: [0, 1]
+  description: "Use GPU (CUDA) if possible"
   twin: False
   should_exist: False
 
@@ -78,5 +123,14 @@ write_lookup:
   default: True
   choices: [True, False]
   description: "write .lookup file containing mapping from internal id, fasta id and file number"
+  twin: False
+  should_exist: False
+
+threads:
+  required: False
+  type: int
+  default: 'all'
+  choices: null
+  description: "Number of CPU-cores used (all by default)"
   twin: False
   should_exist: False

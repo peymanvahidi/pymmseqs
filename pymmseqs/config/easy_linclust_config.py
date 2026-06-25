@@ -79,6 +79,7 @@ class EasyLinClustConfig(BaseConfig):
         sub_mat: str = "aa:blosum62.out,nucl:nucleotide.out",
         max_seq_len: int = 65535,
         db_load_mode: int = 0,
+        gpu: int = 0,
         remove_tmp_files: bool = True,
         force_reuse: bool = False,
         mpi_runner: str = "",
@@ -374,6 +375,7 @@ class EasyLinClustConfig(BaseConfig):
             Database creation mode
             - 0: Copy data
             - 1: Soft link data and write a new index (only works with single-line FASTA/Q files) (default)
+            - 2: GPU compatible db
 
         `id_offset` : int, optional
             Numeric IDs in index file are offset by this value
@@ -415,6 +417,11 @@ class EasyLinClustConfig(BaseConfig):
             - 1: fread
             - 2: mmap
             - 3: mmap+touch
+
+        `gpu` : int, optional
+            Use GPU (CUDA) if possible
+            - 0: off (default)
+            - 1: on
 
         `remove_tmp_files` : bool, optional
             Delete temporary files
@@ -536,6 +543,7 @@ class EasyLinClustConfig(BaseConfig):
         self.sub_mat = sub_mat
         self.max_seq_len = max_seq_len
         self.db_load_mode = db_load_mode
+        self.gpu = gpu
         self.remove_tmp_files = remove_tmp_files
         self.force_reuse = force_reuse
         self.mpi_runner = mpi_runner

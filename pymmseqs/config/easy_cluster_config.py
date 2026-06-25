@@ -102,6 +102,7 @@ class EasyClusterConfig(BaseConfig):
         sub_mat: str = "aa:blosum62.out,nucl:nucleotide.out",
         max_seq_len: int = 65535,
         db_load_mode: int = 0,
+        gpu: int = 0,
         threads: Union[str, int] = 'all',
         compressed: bool = False,
         v: int = 3,
@@ -469,11 +470,12 @@ class EasyClusterConfig(BaseConfig):
             - True (default)
             - False
 
-        `createdb_mode` : int, optional  
+        `createdb_mode` : int, optional
             Database creation mode
             - 0: Copy data
             - 1: Soft link data and write a new index (only works with single-line FASTA/Q files) (default)
-        
+            - 2: GPU compatible db
+
         `id_offset` : int, optional
             Numeric ids in index file are offset by this value
             - 0 (default)
@@ -498,6 +500,11 @@ class EasyClusterConfig(BaseConfig):
             - 1: fread
             - 2: mmap
             - 3: mmap+touch
+
+        `gpu` : int, optional
+            Use GPU (CUDA) if possible
+            - 0: off (default)
+            - 1: on
 
         `threads` : int, optional
             CPU threads
@@ -648,6 +655,7 @@ class EasyClusterConfig(BaseConfig):
         self.sub_mat = sub_mat
         self.max_seq_len = max_seq_len
         self.db_load_mode = db_load_mode
+        self.gpu = gpu
         self.threads = threads
         self.compressed = compressed
         self.v = v
