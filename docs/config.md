@@ -79,6 +79,10 @@ parser.to_gen()
 
 ### EasyTaxonomyConfig
 
-### ConvertalisConfig
+### ConvertAlisConfig
+
+### Convert2FastaConfig
+
+### ExtractOrfsConfig
 
 ### AlignConfig

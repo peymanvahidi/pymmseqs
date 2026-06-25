@@ -31,8 +31,10 @@ my_db = createdb(
 Optional parameters:
 - `shuffle`: bool = True,
 - `compressed`: bool = False,
-- `createdb_mode`: int = 0,
-- `dbtype`: int = 0
+- `createdb_mode`: int = 0 (0: copy data, 1: soft-link data, 2: GPU compatible db),
+- `dbtype`: int = 0,
+- `gpu`: int = 0 (0: off, 1: build a GPU-compatible database using CUDA if possible),
+- `threads`: Union[str, int] = 'all'
 
 Output of `createdb` is an `CreateDBParser` object.
 
@@ -96,6 +98,7 @@ Optional parameters:
 - `cov_mode`: int = 0,
 - `e`: float = 0.001,
 - `cluster_mode`: int = 0,
+- `gpu`: int = 0 (0: off, 1: use GPU (CUDA) if possible),
 
 - Note: if `tmp_dir` is None, tmp folder would be created in the parent dir of `cluster_prefix`
 Output of `easy_cluster` is an `EasyClusterParser` object.
@@ -111,6 +114,44 @@ Methods:
 - `split_rep_as_fasta()`: Splits cluster representatives into train/validation/test sets and saves as FASTA files.
 
 [See an example](../examples/commands_module/easy_cluster_ex.py)
+
+---
+
+## [easy_linclust](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/easy_linclust.py)
+Wrapper around the mmseqs easy-linclust command. A faster, less sensitive linear-time alternative to `easy_cluster`, suited to very large datasets.
+
+```python
+from pymmseqs.commands import easy_linclust
+
+cluster_result = easy_linclust(
+  fasta_files="data/example.fasta",
+  cluster_prefix="output/example_clusters"
+)
+```
+
+Optional parameters:
+- `tmp_dir`: Path = None,
+- `min_seq_id`: float = 0.0,
+- `c`: float = 0.8,
+- `cov_mode`: int = 0,
+- `e`: float = 0.001,
+- `cluster_mode`: int = 0,
+- `kmer_per_seq`: int = 21,
+- `kmer_per_seq_scale`: str = "aa:0.000,nucl:0.200",
+- `gpu`: int = 0 (0: off, 1: use GPU (CUDA) if possible),
+
+- Note: if `tmp_dir` is None, tmp folder would be created in the parent dir of `cluster_prefix`
+Output of `easy_linclust` is an `EasyLinClustParser` object.
+
+Methods:
+- `to_path()`: Get the paths to the cluster output files.
+- `to_list()`: Returns a list of clusters with their representative and member sequences.
+- `to_pandas()`: Converts cluster data into a pandas DataFrame for easy manipulation.
+- `to_gen()`: Generator that yields clusters one at a time for efficient processing of large files.
+- `to_rep_list()`: Returns a list of representative sequences (with or without sequences).
+- `to_rep_gen()`: Generator that yields representative sequences one at a time.
+- `split_rep_as_list()`: Splits cluster representatives into train/validation/test sets as lists.
+- `split_rep_as_fasta()`: Splits cluster representatives into train/validation/test sets and saves as FASTA files.
 
 ---
 
@@ -189,6 +230,40 @@ Methods:
 - `to_path()`: Get the paths to the search output files.
 
 [See an example](../examples/commands_module/easy_search_ex.py)
+
+---
+
+## [easy_linsearch](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/easy_linsearch.py)
+Fast, less-sensitive linear-time homology search (the fast sibling of `easy_search`).
+
+```python
+from pymmseqs.commands import easy_linsearch
+
+search_result = easy_linsearch(
+  query_fasta="query.fasta",
+  target_fasta_or_db="target.fasta",
+  alignment_file="output/search_results.m8"
+)
+```
+
+Optional parameters:
+- `tmp_dir`: Path = None,
+- `e`: float = 0.001,
+- `min_seq_id`: float = 0.0,
+- `c`: float = 0.0,
+- `translate`: bool = False,
+- `translation_table`: int = 1,
+- `search_type`: int = 0,
+- `format_output`: str = "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits"
+
+- Note: if `tmp_dir` is None, tmp folder would be created in the parent dir of `alignment_file`
+Output of `easy_linsearch` is an `EasySearchParser` object.
+
+Methods:
+- `to_list()`: Returns a list of search results with their query, target, and alignment information.
+- `to_pandas()`: Converts search results into a pandas DataFrame for easy manipulation.
+- `to_gen()`: Generator that yields search results one at a time for efficient processing of large files.
+- `to_path()`: Get the paths to the search output files.
 
 ---
 
@@ -325,3 +400,94 @@ Methods:
 - `to_pandas()`: Converts search results into a pandas DataFrame for easy manipulation.
 - `to_gen()`: Generator that yields search results one at a time for efficient processing of large files.
 - `to_path()`: Get the path to the alignment file.
+
+---
+
+## [convertalis](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/convertalis.py)
+Convert an alignment database (e.g. from `search`) into a parsable BLAST-tab table.
+
+```python
+from pymmseqs.commands import convertalis
+
+alis = convertalis(
+  query_db="query_db",
+  target_db="target_db",
+  alignment_db="output/search_db",
+  alignment_file="output/search_results.m8"
+)
+```
+
+Optional parameters:
+- `format_output`: str = "query,target,fident,alnlen,mismatch,gapopen,qstart,qend,tstart,tend,evalue,bits",
+- `search_type`: int = 0,
+- `translation_table`: int = 1,
+- `threads`: Union[str, int] = 'all'
+
+Output of `convertalis` is an `EasySearchParser` object.
+
+Methods:
+- `to_list()`: Returns a list of search results with their query, target, and alignment information.
+- `to_pandas()`: Converts search results into a pandas DataFrame for easy manipulation.
+- `to_gen()`: Generator that yields search results one at a time for efficient processing of large files.
+- `to_path()`: Get the path to the alignment file.
+
+---
+
+## [convert2fasta](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/convert2fasta.py)
+Convert a sequence database back to a FASTA file (reverse of `createdb`).
+
+```python
+from pymmseqs.commands import convert2fasta
+
+fasta = convert2fasta(
+  sequence_db="output/example_db",
+  fasta_file="output/example.fasta"
+)
+```
+
+Optional parameters:
+- `use_header_file`: bool = False,
+- `v`: int = 3
+
+Output of `convert2fasta` is a `Convert2FastaParser` object.
+
+Methods:
+- `to_path()`: Get the path to the FASTA file.
+- `to_gen()`: Generator that yields sequences one at a time for efficient processing of large files.
+- `to_list()`: Returns a list of sequences with their headers.
+- `to_pandas()`: Converts the FASTA records into a pandas DataFrame for easy manipulation.
+
+---
+
+## [extractorfs](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/commands/extractorfs.py)
+Six-frame extraction of open reading frames from a nucleotide database.
+
+```python
+from pymmseqs.commands import extractorfs
+
+orfs = extractorfs(
+  sequence_db="output/contigs_db",
+  orf_db="output/orfs_db"
+)
+```
+
+Optional parameters:
+- `min_length`: int = 30,
+- `max_length`: int = 32734,
+- `orf_start_mode`: int = 1,
+- `contig_start_mode`: int = 2,
+- `contig_end_mode`: int = 2,
+- `forward_frames`: str = "1,2,3",
+- `reverse_frames`: str = "1,2,3",
+- `translation_table`: int = 1,
+- `translate`: bool = False,
+- `threads`: Union[str, int] = 'all'
+
+Output of `extractorfs` is an `ExtractOrfsParser` object.
+
+Methods:
+- `to_pandas()`: Converts the extracted ORFs into a pandas DataFrame, yielding per-ORF rows with absolute start/end coordinates on the source contig.
+- `to_list()`: Returns the extracted ORFs as a list.
+- `to_gen()`: Generator that yields ORFs one at a time for efficient processing of large files.
+- `to_path()`: Get the path prefix of the ORF database.
+- `summary()`: Summary statistics of the extracted ORFs.

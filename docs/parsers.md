@@ -567,6 +567,8 @@ One of the main differences between the `EasySearchParser` and the `SearchParser
 
 * When we are running the `easy_search` command it will run a `EasySearchConfig` under the hood, with the `format_mode` set to 4. So, we get a .tsv file as output with headers which can be later parsed by the `EasySearchParser`.
 
+* The `EasySearchParser` is shared across three commands: `easy_search`, `easy_linsearch`, and `convertalis`. They all produce the same `format_mode=4` BLAST-tab table (a `.tsv` file with a header row), so all three return an `EasySearchParser` object. Accordingly, the parser accepts an `EasySearchConfig`, `EasyLinSearchConfig`, or `ConvertAlisConfig` (each must have `format_mode=4`, otherwise a `ValueError` is raised).
+
 ## Methods:
 
 ### `to_list()`
@@ -663,4 +665,197 @@ easy_search_parser = EasySearchParser(easy_search_config)
 # Get the alignment list
 alignment_list = easy_search_parser.to_list()
 
+```
+
+---
+
+# [Convert2FastaParser](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/parsers/convert2fasta_parser.py)
+The `Convert2FastaParser` processes the output of the MMseqs2 `convert2fasta` command, which converts a sequence database back into a FASTA file. The parser gives you access to that FASTA file as a path, a streaming generator, a list, or a pandas DataFrame.
+
+## Methods:
+
+### `to_path()`
+- Returns the path to the output FASTA file.
+
+### `to_gen()`
+- Returns a **generator** that yields one record at a time, allowing memory-efficient iteration over large FASTA files.
+- Each record is a dictionary with the keys:
+    - `header`: The FASTA header (without the leading `>`).
+    - `sequence`: The sequence data (nucleotide or protein).
+
+### `to_list()`
+- Returns a list of dictionaries, each representing a FASTA record.
+- Each dictionary contains the `header` and `sequence` keys (same as `to_gen()`).
+
+### `to_pandas()`
+- Returns a pandas DataFrame containing the FASTA records.
+- Columns:
+    - `header`: The FASTA header.
+    - `sequence`: The sequence data.
+
+### `__len__()`
+- Returns the number of sequences in the FASTA file (use `len(parser)`).
+
+## For Basic Users
+When using the `pymmseqs.commands.convert2fasta` command, you receive a `Convert2FastaParser` object.
+
+Example:
+```python
+from pymmseqs.commands import convert2fasta
+
+fasta_result = convert2fasta(
+    sequence_db="output/query_db",
+    fasta_file="output/query.fasta",
+)
+
+# Number of sequences
+print(len(fasta_result))
+
+# Stream records without loading everything into memory
+for record in fasta_result.to_gen():
+    if len(record["sequence"]) > 500:
+        print(record["header"])
+```
+
+## For Advanced Users
+Advanced users can utilize the `pymmseqs.config.Convert2FastaConfig` object for additional control.
+
+Example:
+```python
+from pymmseqs.config import Convert2FastaConfig
+from pymmseqs.parsers import Convert2FastaParser
+
+# Create the configuration
+convert2fasta_config = Convert2FastaConfig(
+    sequence_db="output/query_db",
+    fasta_file="output/query.fasta",
+    use_header_file=False,
+)
+
+# Execute the configuration
+convert2fasta_config.run()
+
+# Obtain the parser object
+convert2fasta_parser = Convert2FastaParser(convert2fasta_config)
+
+# Load the records into a DataFrame for analysis
+df = convert2fasta_parser.to_pandas()
+print(df.head())
+```
+
+---
+
+# [ExtractOrfsParser](https://github.com/heispv/pymmseqs/blob/master/pymmseqs/parsers/extractorfs_parser.py)
+The `ExtractOrfsParser` processes the output of the MMseqs2 `extractorfs` command, which performs six-frame extraction of open reading frames (ORFs) from a nucleotide sequence database. `extractorfs` writes the ORFs to a sequence database whose header DB encodes the coordinates of each ORF on its source contig. This parser merges those coordinates with the ORF sequences into a single table and (best effort) resolves the numeric source key back to the original contig accession.
+
+## Methods:
+
+### `to_pandas()`
+- Returns a pandas DataFrame with one row per ORF.
+- Columns:
+    - `orf_id`: Numeric ID of the ORF (its position in the ORF DB).
+    - `source_id`: Numeric key of the source contig in the input sequence DB.
+    - `source_name`: The original contig accession, resolved from the input DB's header DB.
+    - `start`: Absolute start position of the ORF on the source contig.
+    - `end`: Absolute end position of the ORF on the source contig.
+    - `strand`: `'+'` for forward ORFs, `'-'` for reverse ORFs.
+    - `frame`: Reading frame.
+    - `length`: ORF length.
+    - `sequence`: The ORF sequence (nucleotide, or amino acid if `translate=True`).
+
+**Coordinate semantics:** `start` and `end` are absolute positions on the source contig. For a forward ORF (`strand == '+'`) `end > start`; for a reverse ORF (`strand == '-'`) `end < start` (the ORF reads from `start` down to `end`). In all cases `abs(end - start) + 1 == length`. `source_name` is the original contig accession resolved from the input sequence DB (it is `None` if the source header DB could not be read).
+
+### `to_list()`
+- Returns a list of dictionaries, each representing an ORF.
+- The keys are the same as the columns returned by `to_pandas()`.
+
+### `to_gen()`
+- Returns a **generator** that yields one ORF dictionary at a time.
+- The keys are the same as the columns returned by `to_pandas()`.
+
+### `to_path()`
+- Returns the path to the ORF sequence database.
+- Useful for chaining into other commands, e.g. passing it to `convert2fasta` or `search`.
+
+### `__len__()`
+- Returns the number of extracted ORFs (use `len(parser)`).
+
+### `summary()`
+- Returns a dict with summary statistics over the extracted ORFs:
+    - `total_orfs`: Total number of ORFs.
+    - `source_sequences`: Number of distinct source contigs.
+    - `forward_orfs`: Number of ORFs on the forward strand.
+    - `reverse_orfs`: Number of ORFs on the reverse strand.
+    - `mean_length`, `median_length`, `min_length`, `max_length`: ORF length statistics.
+
+### `__repr__()`
+- Printing the parser object shows the `summary()` statistics in a readable layout.
+
+## For Basic Users
+When using the `pymmseqs.commands.extractorfs` command, you receive an `ExtractOrfsParser` object.
+
+Example:
+```python
+from pymmseqs.commands import extractorfs
+
+orf_result = extractorfs(
+    sequence_db="output/contigs_db",
+    orf_db="output/orfs_db",
+    min_length=30,
+)
+
+# Quick overview
+print(orf_result)
+# ExtractOrfsParser:
+#   total_orfs: 1240
+#   source_sequences: 35
+#   forward_orfs: 631
+#   reverse_orfs: 609
+#   mean_length: 412.5
+#   median_length: 351
+#   min_length: 90
+#   max_length: 3201
+
+# Inspect ORFs in a DataFrame
+df = orf_result.to_pandas()
+print(df[["orf_id", "source_name", "start", "end", "strand", "length"]].head())
+
+# Chain into convert2fasta to write the ORFs to a FASTA file
+from pymmseqs.commands import convert2fasta
+convert2fasta(
+    sequence_db=orf_result.to_path(),
+    fasta_file="output/orfs.fasta",
+)
+```
+
+## For Advanced Users
+Advanced users can utilize the `pymmseqs.config.ExtractOrfsConfig` object for additional control.
+
+Example:
+```python
+from pymmseqs.config import ExtractOrfsConfig
+from pymmseqs.parsers import ExtractOrfsParser
+
+# Create the configuration
+extractorfs_config = ExtractOrfsConfig(
+    sequence_db="output/contigs_db",
+    orf_db="output/orfs_db",
+    min_length=60,
+    translation_table=11,   # prokaryote
+    translate=True,         # translate ORFs to amino acids
+)
+
+# Execute the configuration
+extractorfs_config.run()
+
+# Obtain the parser object
+extractorfs_parser = ExtractOrfsParser(extractorfs_config)
+
+# Summary statistics
+print(extractorfs_parser.summary())
+
+# Stream long reverse-strand ORFs without loading everything into memory
+for orf in extractorfs_parser.to_gen():
+    if orf["strand"] == "-" and orf["length"] > 900:
+        print(orf["source_name"], orf["start"], orf["end"])
 ```
