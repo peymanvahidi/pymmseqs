@@ -18,7 +18,14 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X"
 ]
 include = [
-    "pymmseqs/bin/*",
+    # Dict form, because the binary is gitignored and poetry drops VCS-ignored
+    # files from the package - the plain string form silently produced 160 KB
+    # wheels with no binary in them.
+    #
+    # Wheel only: an sdist must stay platform-neutral. If it carried a binary,
+    # build_hook.py would skip the download and, say, a macOS binary could end
+    # up installed on Linux.
+    { path = "pymmseqs/bin/*", format = ["wheel"] },
     "pymmseqs/defaults/*.yaml",
     "scripts/*"
 ]
