@@ -307,6 +307,40 @@ class TestBaseClusterParser(unittest.TestCase):
             f"Train size {len(train)} not in expected range [75,85]"
         )
 
+    def test_split_matches_sklearn_exactly(self):
+        """
+        The split is pinned to what sklearn's train_test_split produced.
+
+        scikit-learn was dropped as a dependency (it ships no musllinux wheel,
+        which broke `pip install` on Alpine) and replaced with a numpy
+        reimplementation. These values were captured from the sklearn version,
+        so users with a fixed seed keep getting the same split.
+        """
+        from pymmseqs.parsers.base_cluster_parser import _train_test_split
+
+        items = [f"seq{i}" for i in range(100)]
+        train, test = _train_test_split(items, test_size=0.2, shuffle=True, random_state=42)
+        self.assertEqual((len(train), len(test)), (80, 20))
+        self.assertEqual(train[:5], ["seq55", "seq88", "seq26", "seq42", "seq69"])
+        self.assertEqual(test[:5], ["seq83", "seq53", "seq70", "seq45", "seq44"])
+
+    def test_split_test_size_float_edge_case(self):
+        """
+        n_train must be n - n_test, not floor(n * (1 - test_size)).
+
+        At test_size=0.9 the latter yields 0 instead of 1, because
+        1 - 0.9 == 0.09999999999999998. This silently disagreed with sklearn
+        on 16 of 400 combinations before it was caught.
+        """
+        from pymmseqs.parsers.base_cluster_parser import _train_test_split
+
+        train, test = _train_test_split(
+            [f"s{i}" for i in range(10)], test_size=0.9, shuffle=True, random_state=0
+        )
+        self.assertEqual(len(train), 1, "one item must remain in train, not zero")
+        self.assertEqual(len(test), 9)
+        self.assertEqual(len(train) + len(test), 10, "no item may be dropped")
+
     def test_split_rep_as_fasta_no_unbound_error(self):
         """split_rep_as_fasta returns None for empty splits instead of raising."""
         with tempfile.TemporaryDirectory() as td:
