@@ -1,10 +1,19 @@
 name: Release
 
+# Tag push  -> build, smoke-test, publish to PyPI, Docker image, GitHub release.
+# Dispatch   -> build, smoke-test, publish to TestPyPI only. Same wheels, same
+#               matrix, so a rehearsal exercises the exact artifacts a real
+#               release would ship.
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish to TestPyPI. Must be unused there, since TestPyPI never allows reuploading a version, even after deletion. e.g. 1.1.0.dev1"
+        required: true
+        type: string
 
 jobs:
   # ── 1. Validate tag and extract version ──────────────────────────────
@@ -13,19 +22,21 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
-      - name: Validate tag ref
-        run: |
-          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
-            echo "::error::This workflow must be triggered by a v* tag push."
-            exit 1
-          fi
-
-      - name: Extract version from tag
+      - name: Resolve version
         id: meta
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            echo "TestPyPI rehearsal: ${VERSION}"
+          else
+            if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+              echo "::error::A release must be triggered by a v* tag push."
+              exit 1
+            fi
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "Release: ${VERSION}"
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Detected version: ${VERSION}"
 
   # ── 2. Run tests ─────────────────────────────────────────────────────
   test:
@@ -203,8 +214,35 @@ jobs:
           assert out.returncode == 0, out.stderr
           EOF
 
-  # ── 6. Publish to PyPI ───────────────────────────────────────────────
+  # ── 6a. Publish to TestPyPI (manual dispatch only) ───────────────────
+  # Trusted publishing is bound to this workflow FILENAME (release.yaml) and to
+  # the environment below, so both must match the TestPyPI publisher config
+  # exactly or the OIDC exchange is rejected.
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-wheels, build-sdist, smoke-test]
+    runs-on: ubuntu-latest
+    environment: testpypi-publish
+    permissions:
+      id-token: write
+    steps:
+      - name: Download wheels and sdist
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+          verbose: true
+
+  # ── 6b. Publish to PyPI (tag push only) ──────────────────────────────
   publish-pypi:
+    if: github.event_name == 'push'
     needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment: pypi-publish
