@@ -31,13 +31,17 @@ jobs:
   test:
     needs: [prepare]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install MMseqs2
         run: |
@@ -56,13 +60,38 @@ jobs:
         run: pytest tests/
 
   # ── 3. Build wheels ──────────────────────────────────────────────────
+  # pymmseqs has no C extensions. The wheel is platform-specific only because
+  # it bundles the mmseqs binary, which cares about the OS and CPU arch but not
+  # about the Python ABI. So build once and retag as py3-none-<platform>, which
+  # installs on every Python 3.x - including versions that do not exist yet.
+  #
+  # For the same reason one Linux runner covers every platform: there is
+  # nothing to cross-compile, only a different tarball to fetch and a different
+  # platform tag to stamp. No macOS runner needed.
   build-wheels:
     needs: [prepare, test]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        os: ["ubuntu-latest", "macos-latest"]
-        python: ["cp310-*"]
+        include:
+          # Both Linux binaries are fully statically linked (no PT_INTERP, no
+          # PT_DYNAMIC), so the musllinux tags are honest and the manylinux
+          # floor can be as low as the tag scheme allows.
+          - target: linux-avx2
+            plat: manylinux1_x86_64.manylinux_2_5_x86_64
+          - target: linux-avx2
+            plat: musllinux_1_2_x86_64
+          - target: linux-arm64
+            plat: manylinux2014_aarch64.manylinux_2_17_aarch64
+          - target: linux-arm64
+            plat: musllinux_1_2_aarch64
+          # One universal2 tarball, two platform tags. minos is 11.0 for the
+          # arm64 slice and 10.15 for the x86_64 slice.
+          - target: osx-universal
+            plat: macosx_11_0_arm64
+          - target: osx-universal
+            plat: macosx_10_15_x86_64
     steps:
       - uses: actions/checkout@v4
 
@@ -76,25 +105,35 @@ jobs:
           sed -i.bak 's/^version = ".*"/version = "${{ needs.prepare.outputs.version }}"/' pyproject.toml
           rm -f pyproject.toml.bak
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install poetry
-          poetry install
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip poetry wheel
 
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v3.4.0
+      - name: Fetch mmseqs binary for ${{ matrix.target }}
         env:
-          CIBW_BUILD: ${{ matrix.python }}
-          CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=11.0"
-          CIBW_BEFORE_BUILD: bash {project}/scripts/download_mmseqs.sh {project}/pymmseqs/bin
-          CIBW_BUILD_VERBOSITY: "1"
+          MMSEQS_TARGET: ${{ matrix.target }}
+        run: |
+          MMSEQS_VERSION=$(python -c "import runpy; print(runpy.run_path('pymmseqs/mmseqs_version.py')['MMSEQS_VERSION'])")
+          export MMSEQS_VERSION
+          echo "Fetching MMseqs2 ${MMSEQS_VERSION} (${MMSEQS_TARGET})"
+          sh scripts/download_mmseqs.sh pymmseqs/bin
 
-      - name: Upload wheels artifact
+      - name: Build wheel
+        run: poetry build -f wheel
+
+      - name: Retag as py3-none-${{ matrix.plat }}
+        run: |
+          python -m wheel tags \
+            --python-tag py3 \
+            --abi-tag none \
+            --platform-tag ${{ matrix.plat }} \
+            --remove dist/*.whl
+          ls -l dist/
+
+      - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
-          path: ./wheelhouse/*.whl
+          name: dist-wheel-${{ strategy.job-index }}
+          path: ./dist/*.whl
 
   # ── 4. Build source distribution ─────────────────────────────────────
   build-sdist:
@@ -122,12 +161,51 @@ jobs:
       - name: Upload sdist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cibw-sdist
+          name: dist-sdist
           path: dist/*.tar.gz
 
-  # ── 5. Publish to PyPI ───────────────────────────────────────────────
+  # ── 5. Smoke-test wheels on Pythons they were not built with ─────────
+  # This is the regression guard for the bug this pipeline shape exists to fix:
+  # wheels that only install on the interpreter that happened to build them.
+  # Deliberately does not check out the repo, so the source tree cannot shadow
+  # the installed package.
+  smoke-test:
+    needs: [build-wheels]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: Install the manylinux x86_64 wheel and run mmseqs
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*manylinux*_x86_64.whl
+          python - <<'EOF'
+          import subprocess
+          from pymmseqs.utils import get_mmseqs_binary
+          binary = get_mmseqs_binary()
+          print("resolved:", binary)
+          out = subprocess.run([binary, "version"], capture_output=True, text=True)
+          print("mmseqs version:", out.stdout.strip())
+          assert out.returncode == 0, out.stderr
+          EOF
+
+  # ── 6. Publish to PyPI ───────────────────────────────────────────────
   publish-pypi:
-    needs: [build-wheels, build-sdist]
+    needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment: pypi-publish
     permissions:
@@ -136,7 +214,7 @@ jobs:
       - name: Download wheels and sdist
         uses: actions/download-artifact@v4
         with:
-          pattern: cibw-*
+          pattern: dist-*
           path: dist
           merge-multiple: true
 
@@ -145,7 +223,7 @@ jobs:
         with:
           verbose: true
 
-  # ── 6. Build and push Docker image ───────────────────────────────────
+  # ── 7. Build and push Docker image ───────────────────────────────────
   docker:
     needs: [prepare, publish-pypi]
     runs-on: ubuntu-latest
@@ -179,7 +257,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/pymmseqs:${{ needs.prepare.outputs.version }}-debian
             ghcr.io/${{ github.repository_owner }}/pymmseqs:latest-debian
 
-  # ── 7. Create GitHub Release ─────────────────────────────────────────
+  # ── 8. Create GitHub Release ─────────────────────────────────────────
   github-release:
     needs: [prepare, publish-pypi]
     runs-on: ubuntu-latest
@@ -191,7 +269,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: cibw-*
+          pattern: dist-*
           path: dist
           merge-multiple: true
 

@@ -11,6 +11,9 @@ license = "MIT"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X"
 ]
@@ -32,6 +35,3 @@ scikit-learn = ">=1.5.0"
 "Homepage" = "https://github.com/heispv/pymmseqs"
 "Documentation" = "https://github.com/heispv/pymmseqs/wiki"
 "Bug Tracker" = "https://github.com/heispv/pymmseqs/issues"
-
-[tool.cibuildwheel]
-skip = "*-manylinux_i686 *-musllinux_i686"

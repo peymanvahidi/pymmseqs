@@ -108,6 +108,26 @@ To use PyMMseqs, you only need:
 
 > **Note**: All other dependencies, including MMseqs2, are automatically installed when you install `pymmseqs` via pip or use the Docker image.
 
+### Where the MMseqs2 binary comes from
+
+Wheels for Linux (x86_64, aarch64) and macOS (Apple Silicon, Intel) ship the MMseqs2 binary
+inside the package, so `pip install pymmseqs` needs no extra step. PyMMseqs looks for it in
+this order:
+
+1. `MMSEQS2_PATH`, if set — use this to point at your own MMseqs2 build.
+2. The binary bundled in the installed package.
+3. A copy previously downloaded to `~/.cache/pymmseqs/` (respects `XDG_CACHE_HOME`).
+4. Otherwise it downloads the pinned MMseqs2 release into that cache on first use.
+
+Step 4 only happens on platforms we ship no wheel for. If your machine has no internet access,
+install MMseqs2 separately and set `MMSEQS2_PATH`.
+
+> **⚠️ Linux x86_64 requires AVX2** (Intel Haswell / AMD Excavator, 2013 or newer). The bundled
+> x86_64 binary is the AVX2 build, and a Python wheel cannot express a CPU-feature requirement.
+> On an older CPU it fails with `Illegal instruction` (SIGILL). If that happens, grab the
+> `sse41` build from the [MMseqs2 releases](https://github.com/soedinglab/MMseqs2/releases)
+> and set `MMSEQS2_PATH` to it.
+
 ---
 
 ## 🤝 Contributing
