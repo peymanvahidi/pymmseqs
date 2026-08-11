@@ -1,7 +1,6 @@
 # pymmseqs/utils/binary.py
 import os
 import platform
-from sysconfig import get_path
 
 def get_mmseqs_binary():
     """
@@ -19,7 +18,10 @@ def get_mmseqs_binary():
     
     system = platform.system()
     binary_name = 'mmseqs.exe' if system == 'Windows' else 'mmseqs'
-    binary_path = os.path.join(get_path('purelib'), 'pymmseqs', 'bin', binary_name)
+    # Resolve relative to this module so the bundled binary is found in every
+    # install layout (venv, --user, conda, editable), not just global purelib.
+    package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    binary_path = os.path.join(package_dir, 'bin', binary_name)
     
     if not os.path.exists(binary_path):
         raise FileNotFoundError(
