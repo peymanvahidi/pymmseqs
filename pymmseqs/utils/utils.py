@@ -1,15 +1,10 @@
 # pymmseqs/utils/utils.py
 
 import os
-import inspect
-from pathlib import Path
-from typing import Any, Tuple, List, Union
-
-import os
 import sys
 import inspect
 from pathlib import Path
-from IPython import get_ipython
+from typing import Any, Tuple, List, Union
 
 def get_caller_dir() -> Path:
     """
@@ -23,16 +18,11 @@ def get_caller_dir() -> Path:
     Returns:
         Path: Absolute path to the directory containing the calling script
     """
-    # Check if running in a Jupyter notebook
-    try:
-        shell = get_ipython().__class__.__name__
-        if shell == 'ZMQInteractiveShell':
-            # Jupyter notebook detected; return current working directory
-            return Path(os.getcwd())
-    except NameError:
-        # Not in an IPython environment; proceed with stack traversal
-        pass
-    
+    # Check if running in a Jupyter notebook. ipykernel is only in sys.modules
+    # when a kernel is running, so this needs no IPython dependency.
+    if "ipykernel" in sys.modules:
+        return Path(os.getcwd())
+
     # Get the full call stack
     frame = inspect.currentframe()
     try:

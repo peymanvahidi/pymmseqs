@@ -6,11 +6,14 @@ build-backend = "poetry.core.masonry.api"
 name = "pymmseqs"
 version = "1.0.5"
 description = "Python wrapper for MMseqs2"
-authors = ["heispv <peyman.vahidi@tum.de>"]
+authors = ["peymanvahidi <peyman.vahidi@helmholtz-munich.de>"]
 license = "MIT"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X"
 ]
@@ -25,14 +28,9 @@ build = "build_hook.py"
 python = ">=3.10"
 pyyaml = "^6.0.1"
 numpy = ">=1.22.4"
-pandas = "^2.2.2"
-ipython = "^8.22.1"
-scikit-learn = ">=1.5.0"
+pandas = ">=2.2.2"
 
 [tool.poetry.urls]
 "Homepage" = "https://github.com/heispv/pymmseqs"
 "Documentation" = "https://github.com/heispv/pymmseqs/wiki"
 "Bug Tracker" = "https://github.com/heispv/pymmseqs/issues"
-
-[tool.cibuildwheel]
-skip = "*-manylinux_i686 *-musllinux_i686"

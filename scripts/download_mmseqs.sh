@@ -1,70 +1,55 @@
 #!/bin/sh
 # scripts/download_mmseqs.sh
+#
+# Usage:
+#   MMSEQS_VERSION=18-8cc5c [MMSEQS_TARGET=linux-avx2] sh scripts/download_mmseqs.sh <target_dir>
+#
+# MMSEQS_TARGET names an MMseqs2 release asset (they are all mmseqs-<target>.tar.gz).
+# Leave it unset to detect it from the host, which is what build_hook.py does.
+# CI sets it explicitly so a single Linux runner can produce the wheels for every
+# platform: nothing here compiles, so there is nothing to cross-compile - only a
+# different tarball to download and a different platform tag to stamp on.
 
 # Exit on error and show commands
 set -ex
 
-# Configuration
-MMSEQS_VERSION="18-8cc5c"
-TARGET_DIR="$1"  # Accept target directory as the first argument
+TARGET_DIR="$1"
+: "${TARGET_DIR:?Target directory must be provided as the first argument}"
+: "${MMSEQS_VERSION:?must be set by the caller, see pymmseqs/mmseqs_version.py}"
+
 BASE_URL="https://github.com/soedinglab/mmseqs2/releases/download/${MMSEQS_VERSION}"
 
-# Check if TARGET_DIR is provided
-if [ -z "${TARGET_DIR}" ]; then
-    echo "Error: Target directory must be provided as the first argument"
-    exit 1
+# Detect the asset from the host unless the caller pinned one
+if [ -z "${MMSEQS_TARGET:-}" ]; then
+    case "$(uname -s)" in
+        Linux*)
+            case "$(uname -m)" in
+                x86_64)  MMSEQS_TARGET="linux-avx2" ;;
+                aarch64) MMSEQS_TARGET="linux-arm64" ;;
+                i686)    MMSEQS_TARGET="linux-sse2" ;;
+                *)
+                    echo "Unsupported Linux architecture: $(uname -m)"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        Darwin*)
+            # Universal binary, covers both arm64 and x86_64
+            MMSEQS_TARGET="osx-universal"
+            ;;
+        *)
+            echo "Unsupported operating system: $(uname -s)"
+            exit 1
+            ;;
+    esac
 fi
 
-# Create target directory
 mkdir -p "${TARGET_DIR}"
 
-# OS-specific download and extraction
-case "$(uname -s)" in
-    Linux*)
-        ARCH=$(uname -m)
-        if [ "${ARCH}" = "x86_64" ]; then
-            URL="${BASE_URL}/mmseqs-linux-avx2.tar.gz"
-        elif [ "${ARCH}" = "aarch64" ]; then
-            URL="${BASE_URL}/mmseqs-linux-arm64.tar.gz"
-        elif [ "${ARCH}" = "i686" ]; then
-            URL="${BASE_URL}/mmseqs-linux-sse2.tar.gz"
-        else
-            echo "Unsupported Linux architecture: ${ARCH}"
-            exit 1
-        fi
-        
-        # Download and extract
-        curl -L "${URL}" | tar -zxf - \
-            --strip-components=2 \
-            -C "${TARGET_DIR}" \
-            "mmseqs/bin/mmseqs"
-        ;;
-    
-    Darwin*)
-        # macOS universal binary
-        curl -L "${BASE_URL}/mmseqs-osx-universal.tar.gz" | tar -zxf - \
-            --strip-components=2 \
-            -C "${TARGET_DIR}" \
-            "mmseqs/bin/mmseqs"
-        ;;
-    
-    # MINGW*|CYGWIN*|MSYS*)
-    #     # Windows
-    #     curl -L "${BASE_URL}/mmseqs-win64.zip" -o mmseqs.zip
-    #     unzip -j mmseqs.zip "mmseqs/bin/mmseqs.exe" -d "${TARGET_DIR}"
-    #     rm mmseqs.zip
-    #     ;;
-    
-    *)
-        echo "Unsupported operating system"
-        exit 1
-        ;;
-esac
+curl -fL "${BASE_URL}/mmseqs-${MMSEQS_TARGET}.tar.gz" | tar -zxf - \
+    --strip-components=2 \
+    -C "${TARGET_DIR}" \
+    "mmseqs/bin/mmseqs"
 
-# Verify binary exists
-ls -l "${TARGET_DIR}/mmseqs"*
-
-# Set executable permissions (Unix systems)
-if [ "$(uname -s)" != "MINGW"* ]; then
-    chmod +x "${TARGET_DIR}/mmseqs"
-fi
+chmod +x "${TARGET_DIR}/mmseqs"
+ls -l "${TARGET_DIR}/mmseqs"

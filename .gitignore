@@ -35,3 +35,8 @@ examples/**/output/
 
 # poetry lock file
 poetry.lock
+
+# Bundled mmseqs binary, downloaded at build time by build_hook.py.
+# Only the binary, not the directory: pymmseqs/bin/__init__.py is tracked.
+pymmseqs/bin/mmseqs
+pymmseqs/bin/mmseqs.exe
