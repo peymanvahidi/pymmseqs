@@ -15,8 +15,16 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
+# Never cancel a release in flight; a half-published run is worse than a slow one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  # ── 1. Validate tag and extract version ──────────────────────────────
+  # ── 1. Resolve and validate the version ──────────────────────────────
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -24,19 +32,31 @@ jobs:
     steps:
       - name: Resolve version
         id: meta
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ inputs.version }}"
-            echo "TestPyPI rehearsal: ${VERSION}"
+            VERSION="${INPUT_VERSION}"
           else
             if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
               echo "::error::A release must be triggered by a v* tag push."
               exit 1
             fi
             VERSION="${GITHUB_REF#refs/tags/v}"
-            echo "Release: ${VERSION}"
           fi
+
+          # Tolerate a v prefix typed into the dispatch box; poetry-core rejects it.
+          VERSION="${VERSION#v}"
+
+          # Also closes the injection path, since this value is interpolated
+          # into a sed expression downstream.
+          if ! [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.\-]?[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Version '${VERSION}' is not a valid PEP 440 version."
+            exit 1
+          fi
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${VERSION}"
 
   # ── 2. Run tests ─────────────────────────────────────────────────────
   test:
@@ -47,10 +67,10 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -63,7 +83,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install poetry
-          poetry build
+          poetry build -f wheel
           python -m pip install dist/*.whl
           python -m pip install pytest
 
@@ -104,20 +124,24 @@ jobs:
           - target: osx-universal
             plat: macosx_10_15_x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
-      - name: Stamp version from tag
+      - name: Stamp version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          sed -i.bak 's/^version = ".*"/version = "${{ needs.prepare.outputs.version }}"/' pyproject.toml
+          sed -i.bak "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
           rm -f pyproject.toml.bak
 
       - name: Install build tooling
-        run: python -m pip install --upgrade pip poetry wheel
+        # wheel is pinned: `wheel tags` below is the load-bearing step of this
+        # whole design, and a silent CLI change would break releases.
+        run: python -m pip install --upgrade pip poetry "wheel>=0.45,<1"
 
       - name: Fetch mmseqs binary for ${{ matrix.target }}
         env:
@@ -141,7 +165,7 @@ jobs:
           ls -l dist/
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-wheel-${{ strategy.job-index }}
           path: ./dist/*.whl
@@ -151,16 +175,18 @@ jobs:
     needs: [prepare, test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.x"
 
-      - name: Stamp version from tag
+      - name: Stamp version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          sed -i.bak 's/^version = ".*"/version = "${{ needs.prepare.outputs.version }}"/' pyproject.toml
+          sed -i.bak "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
           rm -f pyproject.toml.bak
 
       - name: Install Poetry
@@ -170,41 +196,70 @@ jobs:
         run: poetry build --format sdist
 
       - name: Upload sdist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-sdist
           path: dist/*.tar.gz
 
-  # ── 5. Smoke-test wheels on Pythons they were not built with ─────────
-  # This is the regression guard for the bug this pipeline shape exists to fix:
-  # wheels that only install on the interpreter that happened to build them.
+  # ── 5a. Smoke-test wheels on Pythons they were not built with ────────
+  # The regression guard for the bug this pipeline shape exists to fix: wheels
+  # that only install on the interpreter that happened to build them.
   # Deliberately does not check out the repo, so the source tree cannot shadow
   # the installed package.
+  #
+  # macOS x86_64 is absent because GitHub retired every Intel macOS runner
+  # (only macos-14/15/26, all arm64, remain). That wheel carries a binary
+  # byte-identical to the arm64 one - same universal2 tarball - so the payload
+  # is covered by the macos leg below; only its platform tag is unexercised.
   smoke-test:
     needs: [build-wheels]
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          - runner: ubuntu-latest
+            python-version: "3.10"
+            wheel: "*manylinux1_x86_64*.whl"
+          - runner: ubuntu-latest
+            python-version: "3.13"
+            wheel: "*manylinux1_x86_64*.whl"
+          - runner: ubuntu-24.04-arm
+            python-version: "3.13"
+            wheel: "*manylinux2014_aarch64*.whl"
+          - runner: macos-latest
+            python-version: "3.13"
+            wheel: "*macosx_11_0_arm64*.whl"
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: dist-wheel-*
           path: dist
           merge-multiple: true
 
-      - name: Install the manylinux x86_64 wheel and run mmseqs
+      - name: Install ${{ matrix.wheel }} and run mmseqs
+        env:
+          WHEEL_GLOB: ${{ matrix.wheel }}
         run: |
           python -m pip install --upgrade pip
-          python -m pip install dist/*manylinux*_x86_64.whl
-          python - <<'EOF'
+          # Fail loudly rather than silently installing the wrong one if a
+          # future tag change makes a pattern match two wheels.
+          count=$(find dist -maxdepth 1 -name "$WHEEL_GLOB" | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::expected 1 wheel for '$WHEEL_GLOB', got $count"
+            find dist -maxdepth 1 -name "$WHEEL_GLOB"
+            exit 1
+          fi
+          WHEEL=$(find dist -maxdepth 1 -name "$WHEEL_GLOB")
+          echo "Installing $WHEEL on $(python -V)"
+          python -m pip install "$WHEEL"
+          python - <<'PY'
           import subprocess
           from pymmseqs.utils import get_mmseqs_binary
           binary = get_mmseqs_binary()
@@ -212,7 +267,60 @@ jobs:
           out = subprocess.run([binary, "version"], capture_output=True, text=True)
           print("mmseqs version:", out.stdout.strip())
           assert out.returncode == 0, out.stderr
-          EOF
+          PY
+
+  # ── 5b. Smoke-test the musl wheels ───────────────────────────────────
+  # Alpine runs via `docker run`, not a job-level `container:`. Actions cannot
+  # execute inside musl images (the Node the runner injects is glibc-linked),
+  # so a container job would fail before ever reaching pip.
+  smoke-test-musl:
+    needs: [build-wheels]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            wheel: "*musllinux_1_2_x86_64*.whl"
+          - runner: ubuntu-24.04-arm
+            wheel: "*musllinux_1_2_aarch64*.whl"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v8
+        with:
+          pattern: dist-wheel-*
+          path: dist
+          merge-multiple: true
+
+      - name: Write check script
+        run: |
+          cat > check.py <<'PY'
+          import subprocess
+          from pymmseqs.utils import get_mmseqs_binary
+          binary = get_mmseqs_binary()
+          print("resolved:", binary)
+          out = subprocess.run([binary, "version"], capture_output=True, text=True)
+          print("mmseqs version:", out.stdout.strip())
+          assert out.returncode == 0, out.stderr
+          PY
+
+      - name: Install ${{ matrix.wheel }} inside Alpine
+        env:
+          WHEEL_GLOB: ${{ matrix.wheel }}
+        run: |
+          count=$(find dist -maxdepth 1 -name "$WHEEL_GLOB" | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::expected 1 wheel for '$WHEEL_GLOB', got $count"
+            find dist -maxdepth 1 -name "$WHEEL_GLOB"
+            exit 1
+          fi
+          WHEEL=$(basename "$(find dist -maxdepth 1 -name "$WHEEL_GLOB")")
+          echo "Installing $WHEEL on python:3.13-alpine"
+          # Mount the directory, not the file: a single-file bind mount can
+          # arrive with a mangled name, and the platform tags live in the
+          # filename, so pip would reject it as not a valid wheel filename.
+          docker run --rm -v "$PWD:/w:ro" python:3.13-alpine \
+            sh -c "pip install --quiet /w/dist/$WHEEL && python /w/check.py"
 
   # ── 6a. Publish to TestPyPI (manual dispatch only) ───────────────────
   # Trusted publishing is bound to this workflow FILENAME (release.yaml) and to
@@ -220,14 +328,14 @@ jobs:
   # exactly or the OIDC exchange is rejected.
   publish-testpypi:
     if: github.event_name == 'workflow_dispatch'
-    needs: [build-wheels, build-sdist, smoke-test]
+    needs: [build-wheels, build-sdist, smoke-test, smoke-test-musl]
     runs-on: ubuntu-latest
     environment: testpypi-publish
     permissions:
       id-token: write
     steps:
       - name: Download wheels and sdist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           path: dist
@@ -243,14 +351,14 @@ jobs:
   # ── 6b. Publish to PyPI (tag push only) ──────────────────────────────
   publish-pypi:
     if: github.event_name == 'push'
-    needs: [build-wheels, build-sdist, smoke-test]
+    needs: [build-wheels, build-sdist, smoke-test, smoke-test-musl]
     runs-on: ubuntu-latest
     environment: pypi-publish
     permissions:
       id-token: write
     steps:
       - name: Download wheels and sdist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           path: dist
@@ -269,23 +377,33 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      # Without this the image is built from an unstamped pyproject.toml, so
+      # tagging v1.2.0 published an image containing whatever version happened
+      # to be committed.
+      - name: Stamp version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+          rm -f pyproject.toml.bak
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Debian image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: debian-build
@@ -302,17 +420,17 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: dist-*
           path: dist
           merge-multiple: true
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.prepare.outputs.version }}
           name: v${{ needs.prepare.outputs.version }}
