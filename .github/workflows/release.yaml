@@ -260,10 +260,21 @@ jobs:
           echo "Installing $WHEEL on $(python -V)"
           python -m pip install "$WHEEL"
           python - <<'PY'
-          import subprocess
+          import pathlib, subprocess
+          import pymmseqs
           from pymmseqs.utils import get_mmseqs_binary
+
+          # Assert the binary came from the WHEEL, not the runtime download
+          # fallback. Without this the fallback silently rescues an empty wheel
+          # and the smoke test passes on a broken release - which is exactly
+          # what happened when a .gitignore entry emptied every wheel.
+          bundled = pathlib.Path(pymmseqs.__file__).parent / "bin" / "mmseqs"
+          assert bundled.exists(), f"wheel shipped no binary at {bundled}"
+
           binary = get_mmseqs_binary()
-          print("resolved:", binary)
+          print("resolved:", binary, f"({bundled.stat().st_size:,} bytes)")
+          assert pathlib.Path(binary) == bundled, f"resolved {binary}, expected {bundled}"
+
           out = subprocess.run([binary, "version"], capture_output=True, text=True)
           print("mmseqs version:", out.stdout.strip())
           assert out.returncode == 0, out.stderr
@@ -295,10 +306,18 @@ jobs:
       - name: Write check script
         run: |
           cat > check.py <<'PY'
-          import subprocess
+          import pathlib, subprocess
+          import pymmseqs
           from pymmseqs.utils import get_mmseqs_binary
+
+          # Must come from the wheel, not the runtime download fallback.
+          bundled = pathlib.Path(pymmseqs.__file__).parent / "bin" / "mmseqs"
+          assert bundled.exists(), f"wheel shipped no binary at {bundled}"
+
           binary = get_mmseqs_binary()
-          print("resolved:", binary)
+          print("resolved:", binary, f"({bundled.stat().st_size:,} bytes)")
+          assert pathlib.Path(binary) == bundled, f"resolved {binary}, expected {bundled}"
+
           out = subprocess.run([binary, "version"], capture_output=True, text=True)
           print("mmseqs version:", out.stdout.strip())
           assert out.returncode == 0, out.stderr
